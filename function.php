@@ -344,7 +344,8 @@ function personel_register_form() {
                         </select>
                         <input type="hidden" name="nama_provinsi" id="nama_provinsi">
                     </div>
-
+                </div>
+                <div class="form-row">
                     <div class="form-group full">
                         <label>Kota/Kabupaten <span class="required">*</span> (Maksimal 3)</label>
                         <select name="kota_kabupaten[]" id="domisili_kota" class="lx-select2-multi" multiple="multiple" required style="width:100%;">
@@ -683,16 +684,20 @@ jQuery(document).ready(function($) {
         maximumSelectionLength: 3
     });
 
-    fetch('https://emsifa.github.io/api-wilayah-indonesia/api/provinces.json')
-        .then(response => response.json())
-        .then(provinces => {
+    var ajaxUrl = '<?php echo admin_url('admin-ajax.php'); ?>';
+
+    $.getJSON(ajaxUrl, { action: 'fetch_wilayah', type: 'provinces' })
+        .done(function(provinces) {
             let options = '<option value="">Pilih Provinsi</option>';
             provinces.forEach(prov => {
                 options += `<option value="${prov.id}" data-name="${prov.name}">${prov.name}</option>`;
             });
             $('#domisili_provinsi').html(options).trigger('change');
         })
-        .catch(error => console.error('Error fetching provinces:', error));
+        .fail(function() {
+            console.error('Gagal memuat data provinsi');
+            $('#domisili_provinsi').html('<option value="">Gagal memuat data</option>');
+        });
 
     $('#domisili_provinsi').on('change', function() {
         let provId = $(this).val();
@@ -707,17 +712,16 @@ jQuery(document).ready(function($) {
         $('#domisili_kota').html('<option value="">Memuat data kota...</option>').prop('disabled', true);
 
         if (provId) {
-            fetch(`https://emsifa.github.io/api-wilayah-indonesia/api/regencies/${provId}.json`)
-                .then(response => response.json())
-                .then(regencies => {
+            $.getJSON(ajaxUrl, { action: 'fetch_wilayah', type: 'regencies', prov_id: provId })
+                .done(function(regencies) {
                     let options = '';
                     regencies.forEach(reg => {
                         options += `<option value="${reg.name}">${reg.name}</option>`;
                     });
                     $('#domisili_kota').html(options).prop('disabled', false).trigger('change');
                 })
-                .catch(error => {
-                    console.error('Error fetching regencies:', error);
+                .fail(function() {
+                    console.error('Gagal memuat data kota');
                     $('#domisili_kota').html('<option value="">Gagal memuat data</option>').prop('disabled', false);
                 });
         } else {
@@ -1424,6 +1428,36 @@ function lx_toggle_status_personel_handler() {
     }
     wp_die();
 }
+
+add_action('wp_ajax_fetch_wilayah', 'proxy_fetch_wilayah');
+add_action('wp_ajax_nopriv_fetch_wilayah', 'proxy_fetch_wilayah');
+function proxy_fetch_wilayah() {
+    $type = isset($_GET['type']) ? sanitize_text_field($_GET['type']) : '';
+    $prov_id = isset($_GET['prov_id']) ? intval($_GET['prov_id']) : 0;
+
+    if ($type === 'provinces') {
+        $url = 'https://emsifa.github.io/api-wilayah-indonesia/api/provinces.json';
+    } elseif ($type === 'regencies' && $prov_id) {
+        $url = 'https://emsifa.github.io/api-wilayah-indonesia/api/regencies/' . $prov_id . '.json';
+    } else {
+        wp_send_json_error('Invalid request');
+    }
+
+    $response = wp_remote_get($url);
+    if (is_wp_error($response)) {
+        wp_send_json_error('Gagal mengambil data wilayah');
+    }
+
+    $body = wp_remote_retrieve_body($response);
+    if (empty($body)) {
+        wp_send_json_error('Data kosong');
+    }
+
+    header('Content-Type: application/json');
+    echo $body;
+    wp_die();
+}
+
 add_action('admin_head', 'lx_status_personel_assets');
 function lx_status_personel_assets() {
     // Hanya tampilkan di halaman admin personel
@@ -3373,9 +3407,10 @@ jQuery(document).ready(function($) {
         maximumSelectionLength: 3
     });
 
-    fetch('https://emsifa.github.io/api-wilayah-indonesia/api/provinces.json')
-        .then(response => response.json())
-        .then(provinces => {
+    var ajaxUrl = '<?php echo admin_url('admin-ajax.php'); ?>';
+
+    $.getJSON(ajaxUrl, { action: 'fetch_wilayah', type: 'provinces' })
+        .done(function(provinces) {
             let options = '<option value="">Pilih Provinsi</option>';
             provinces.forEach(prov => {
                 var selected = (prov.name === savedProvinsi) ? 'selected' : '';
@@ -3390,12 +3425,13 @@ jQuery(document).ready(function($) {
                 }
             }
         })
-        .catch(error => console.error('Error fetching provinces:', error));
+        .fail(function() {
+            console.error('Gagal memuat data provinsi');
+        });
 
     function loadKotaEdit(provId) {
-        fetch(`https://emsifa.github.io/api-wilayah-indonesia/api/regencies/${provId}.json`)
-            .then(response => response.json())
-            .then(regencies => {
+        $.getJSON(ajaxUrl, { action: 'fetch_wilayah', type: 'regencies', prov_id: provId })
+            .done(function(regencies) {
                 var savedKota = $('#edit_domisili_kota').val() || [];
                 let options = '';
                 regencies.forEach(reg => {
@@ -3404,7 +3440,9 @@ jQuery(document).ready(function($) {
                 });
                 $('#edit_domisili_kota').html(options).prop('disabled', false).trigger('change');
             })
-            .catch(error => console.error('Error fetching regencies:', error));
+            .fail(function() {
+                console.error('Gagal memuat data kota');
+            });
     }
 
     $('#edit_domisili_provinsi').on('change', function() {
@@ -4465,9 +4503,10 @@ jQuery(document).ready(function($) {
         width: '100%'
     });
 
-    fetch('https://emsifa.github.io/api-wilayah-indonesia/api/provinces.json')
-        .then(response => response.json())
-        .then(provinces => {
+    var ajaxUrl = '<?php echo admin_url('admin-ajax.php'); ?>';
+
+    $.getJSON(ajaxUrl, { action: 'fetch_wilayah', type: 'provinces' })
+        .done(function(provinces) {
             let options = '<option value="">Semua Provinsi</option>';
             provinces.forEach(prov => {
                 var selected = (prov.name === filterProvinsi) ? 'selected' : '';
@@ -4481,9 +4520,8 @@ jQuery(document).ready(function($) {
         });
 
     function loadKotaFilter(provId) {
-        fetch(`https://emsifa.github.io/api-wilayah-indonesia/api/regencies/${provId}.json`)
-            .then(response => response.json())
-            .then(regencies => {
+        $.getJSON(ajaxUrl, { action: 'fetch_wilayah', type: 'regencies', prov_id: provId })
+            .done(function(regencies) {
                 let options = '<option value="">Semua Kota/Kabupaten</option>';
                 regencies.forEach(reg => {
                     var selected = (reg.name === filterKota) ? 'selected' : '';
