@@ -337,11 +337,20 @@ function personel_register_form() {
                 </div>
 
                 <div class="form-row">
-                    <div class="form-group">
-                        <label>Domisili</label>
-                        <input type="text" name="domisili" placeholder="Kota, Provinsi">
+                    <div class="form-group full" style="margin-bottom: 20px;">
+                        <label>Domisili Provinsi <span class="required">*</span></label>
+                        <select name="provinsi" id="domisili_provinsi" class="lx-select2" required style="width:100%;">
+                            <option value="">Memuat data provinsi...</option>
+                        </select>
+                        <input type="hidden" name="nama_provinsi" id="nama_provinsi">
                     </div>
-					
+
+                    <div class="form-group full">
+                        <label>Kota/Kabupaten <span class="required">*</span> (Maksimal 3)</label>
+                        <select name="kota_kabupaten[]" id="domisili_kota" class="lx-select2-multi" multiple="multiple" required style="width:100%;">
+                            <option value="">Pilih provinsi terlebih dahulu</option>
+                        </select>
+                    </div>
                 </div>
 				<h2>
 					Data Pekerjaan
@@ -627,6 +636,96 @@ jQuery(document).ready(function($) {
   user-select: none;
   white-space: nowrap;
 }</style>
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<style>
+.select2-container--default .select2-selection--single,
+.select2-container--default .select2-selection--multiple {
+    background-color: #1a1a1a !important;
+    border: 1px solid #333 !important;
+    border-radius: 4px;
+    padding: 5px;
+    min-height: 42px;
+}
+.select2-container--default .select2-selection--single .select2-selection__rendered,
+.select2-container--default .select2-selection--multiple .select2-selection__choice {
+    color: #fff !important;
+}
+.select2-container--default .select2-results__option {
+    background-color: #1a1a1a;
+    color: #fff;
+}
+.select2-container--default .select2-results__option--highlighted[aria-selected] {
+    background-color: #d4af37 !important;
+    color: #000 !important;
+}
+.select2-container--default .select2-selection--multiple .select2-selection__choice {
+    background-color: #d4af37 !important;
+    border: none;
+    color: #000 !important;
+    font-weight: bold;
+}
+.select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
+    color: #000 !important;
+    margin-right: 5px;
+}
+</style>
+
+<script>
+jQuery(document).ready(function($) {
+    $('#domisili_provinsi').select2({
+        placeholder: "Pilih Provinsi"
+    });
+    
+    $('#domisili_kota').select2({
+        placeholder: "Pilih maksimal 3 Kota/Kabupaten",
+        maximumSelectionLength: 3
+    });
+
+    fetch('https://emsifa.github.io/api-wilayah-indonesia/api/provinces.json')
+        .then(response => response.json())
+        .then(provinces => {
+            let options = '<option value="">Pilih Provinsi</option>';
+            provinces.forEach(prov => {
+                options += `<option value="${prov.id}" data-name="${prov.name}">${prov.name}</option>`;
+            });
+            $('#domisili_provinsi').html(options).trigger('change');
+        })
+        .catch(error => console.error('Error fetching provinces:', error));
+
+    $('#domisili_provinsi').on('change', function() {
+        let provId = $(this).val();
+        let provName = $(this).find(':selected').data('name');
+        
+        if(provName) {
+            $('#nama_provinsi').val(provName);
+        } else {
+            $('#nama_provinsi').val('');
+        }
+
+        $('#domisili_kota').html('<option value="">Memuat data kota...</option>').prop('disabled', true);
+
+        if (provId) {
+            fetch(`https://emsifa.github.io/api-wilayah-indonesia/api/regencies/${provId}.json`)
+                .then(response => response.json())
+                .then(regencies => {
+                    let options = '';
+                    regencies.forEach(reg => {
+                        options += `<option value="${reg.name}">${reg.name}</option>`;
+                    });
+                    $('#domisili_kota').html(options).prop('disabled', false).trigger('change');
+                })
+                .catch(error => {
+                    console.error('Error fetching regencies:', error);
+                    $('#domisili_kota').html('<option value="">Gagal memuat data</option>').prop('disabled', false);
+                });
+        } else {
+             $('#domisili_kota').html('<option value="">Pilih provinsi terlebih dahulu</option>').prop('disabled', true);
+        }
+    });
+});
+</script>
     <?php
     return ob_get_clean();
 }
@@ -742,7 +841,7 @@ $nama_depan = strtok($nama_panggilan, ' ');
         'nama_panggilan' => $nama_depan,
         'no_hp' => sanitize_text_field($_POST['no_hp']),
         'tanggal_lahir' => $tanggal_lahir,
-        'domisili' => sanitize_text_field($_POST['domisili']),
+        'domisili' => isset($_POST['nama_provinsi']) && isset($_POST['kota_kabupaten']) ? sanitize_text_field($_POST['nama_provinsi']) . ' - ' . implode(', ', array_map('sanitize_text_field', $_POST['kota_kabupaten'])) : '',
         'posisi' => implode(',', array_unique($posisi_array)), // F,D,E
         'cv_url' => $cv_url,
         'sertifikat_multiple' => $sertifikat_json,
@@ -2181,7 +2280,7 @@ $new_full_kode = $number_part . '-' . $new_suffix;
             'nama_panggilan'    => sanitize_text_field($_POST['nama_panggilan']),
             'no_hp'             => sanitize_text_field($_POST['no_hp']),
             'tanggal_lahir'     => $tanggal_lahir,
-            'domisili'          => sanitize_text_field($_POST['domisili']),
+            'domisili'          => isset($_POST['nama_provinsi']) && isset($_POST['kota_kabupaten']) ? sanitize_text_field($_POST['nama_provinsi']) . ' - ' . implode(', ', array_map('sanitize_text_field', $_POST['kota_kabupaten'])) : '',
             'sertifikat'        => sanitize_textarea_field($_POST['sertifikat']),
             'deskripsi'         => sanitize_textarea_field($_POST['deskripsi']),
             'peralatan'         => sanitize_textarea_field($_POST['peralatan']),
@@ -3032,9 +3131,26 @@ function render_personel_edit_profil($personel, $message = '') {
 			</div>
             </div>
 
-            <div class="form-group full">
-                <label>Domisili</label>
-                <input type="text" name="domisili" value="<?php echo esc_attr($personel->domisili); ?>" placeholder="Kota, Provinsi">
+            <div class="form-row">
+                <div class="form-group full" style="margin-bottom: 20px;">
+                    <label>Domisili Provinsi <span class="required">*</span></label>
+                    <select name="provinsi" id="edit_domisili_provinsi" class="lx-select2" style="width:100%;">
+                        <option value="">Pilih Provinsi</option>
+                    </select>
+                    <input type="hidden" name="nama_provinsi" id="edit_nama_provinsi" value="<?php echo esc_attr(trim(explode(' - ', $personel->domisili)[0] ?? '')); ?>">
+                </div>
+                <div class="form-group full">
+                    <label>Kota/Kabupaten <span class="required">*</span> (Maksimal 3)</label>
+                    <select name="kota_kabupaten[]" id="edit_domisili_kota" class="lx-select2-multi" multiple="multiple" style="width:100%;">
+                        <?php
+                        $kota_parts = explode(' - ', $personel->domisili);
+                        $kota_list = isset($kota_parts[1]) ? explode(', ', $kota_parts[1]) : [];
+                        foreach ($kota_list as $kt) {
+                            echo '<option value="' . esc_attr(trim($kt)) . '" selected>' . esc_html(trim($kt)) . '</option>';
+                        }
+                        ?>
+                    </select>
+                </div>
             </div>
 
             <h3 style="color:var(--gold); margin-top:30px;">💼 Data Pekerjaan</h3>
@@ -3209,6 +3325,108 @@ function render_personel_edit_profil($personel, $message = '') {
             </button>
         </form>
     </div>
+
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<style>
+.select2-container--default .select2-selection--single,
+.select2-container--default .select2-selection--multiple {
+    background-color: #1a1a1a !important;
+    border: 1px solid #333 !important;
+    border-radius: 4px;
+    padding: 5px;
+    min-height: 42px;
+}
+.select2-container--default .select2-selection--single .select2-selection__rendered,
+.select2-container--default .select2-selection--multiple .select2-selection__choice {
+    color: #fff !important;
+}
+.select2-container--default .select2-results__option {
+    background-color: #1a1a1a;
+    color: #fff;
+}
+.select2-container--default .select2-results__option--highlighted[aria-selected] {
+    background-color: #d4af37 !important;
+    color: #000 !important;
+}
+.select2-container--default .select2-selection--multiple .select2-selection__choice {
+    background-color: #d4af37 !important;
+    border: none;
+    color: #000 !important;
+    font-weight: bold;
+}
+.select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
+    color: #000 !important;
+    margin-right: 5px;
+}
+</style>
+<script>
+jQuery(document).ready(function($) {
+    var savedProvinsi = $('#edit_nama_provinsi').val();
+
+    $('#edit_domisili_provinsi').select2({
+        placeholder: "Pilih Provinsi"
+    });
+    
+    $('#edit_domisili_kota').select2({
+        placeholder: "Pilih maksimal 3 Kota/Kabupaten",
+        maximumSelectionLength: 3
+    });
+
+    fetch('https://emsifa.github.io/api-wilayah-indonesia/api/provinces.json')
+        .then(response => response.json())
+        .then(provinces => {
+            let options = '<option value="">Pilih Provinsi</option>';
+            provinces.forEach(prov => {
+                var selected = (prov.name === savedProvinsi) ? 'selected' : '';
+                options += `<option value="${prov.id}" data-name="${prov.name}" ${selected}>${prov.name}</option>`;
+            });
+            $('#edit_domisili_provinsi').html(options).trigger('change');
+            
+            if (savedProvinsi) {
+                var provId = $('#edit_domisili_provinsi').val();
+                if (provId) {
+                    loadKotaEdit(provId);
+                }
+            }
+        })
+        .catch(error => console.error('Error fetching provinces:', error));
+
+    function loadKotaEdit(provId) {
+        fetch(`https://emsifa.github.io/api-wilayah-indonesia/api/regencies/${provId}.json`)
+            .then(response => response.json())
+            .then(regencies => {
+                var savedKota = $('#edit_domisili_kota').val() || [];
+                let options = '';
+                regencies.forEach(reg => {
+                    var selected = savedKota.includes(reg.name) ? 'selected' : '';
+                    options += `<option value="${reg.name}" ${selected}>${reg.name}</option>`;
+                });
+                $('#edit_domisili_kota').html(options).prop('disabled', false).trigger('change');
+            })
+            .catch(error => console.error('Error fetching regencies:', error));
+    }
+
+    $('#edit_domisili_provinsi').on('change', function() {
+        let provId = $(this).val();
+        let provName = $(this).find(':selected').data('name');
+        
+        if(provName) {
+            $('#edit_nama_provinsi').val(provName);
+        } else {
+            $('#edit_nama_provinsi').val('');
+        }
+
+        $('#edit_domisili_kota').html('<option value="">Memuat data kota...</option>').prop('disabled', true);
+
+        if (provId) {
+            loadKotaEdit(provId);
+        } else {
+            $('#edit_domisili_kota').html('<option value="">Pilih provinsi terlebih dahulu</option>').prop('disabled', true);
+        }
+    });
+});
+</script>
 <script>
 (function() {
     const tagInput = document.getElementById('tagInput');
@@ -4150,6 +4368,8 @@ function render_list_personel_publik() {
     $search = isset($_GET['p_search']) ? sanitize_text_field($_GET['p_search']) : '';
     $filter_posisi = isset($_GET['p_posisi']) ? sanitize_text_field($_GET['p_posisi']) : '';
     $filter_price = isset($_GET['p_price']) ? sanitize_text_field($_GET['p_price']) : '';
+    $filter_provinsi = isset($_GET['p_provinsi']) ? sanitize_text_field($_GET['p_provinsi']) : '';
+    $filter_kota = isset($_GET['p_kota']) ? sanitize_text_field($_GET['p_kota']) : '';
 
     // 2. Build Query
    $query = "SELECT p.*, 
@@ -4179,6 +4399,12 @@ if ($filter_posisi) {
 }
 if ($filter_price) {
     $query .= $wpdb->prepare(" AND p.pricelist_perhari = %s", $filter_price);
+}
+if ($filter_provinsi) {
+    $query .= $wpdb->prepare(" AND p.domisili LIKE %s", $filter_provinsi . ' - %');
+}
+if ($filter_kota) {
+    $query .= $wpdb->prepare(" AND p.domisili LIKE %s", '%' . $filter_kota . '%');
 }
 
 // TAMBAHKAN BARIS INI UNTUK SORTING PRIORITAS
@@ -4211,9 +4437,72 @@ $query .= " ORDER BY CASE WHEN p.rekomendasi = 'ya' THEN 0 ELSE 1 END ASC, p.id 
                     <option value="diatas_3jt" <?php selected($filter_price, 'diatas_3jt'); ?>>⭐ Diatas 3 jt</option>
                 </select>
 
+                <select name="p_provinsi" id="filter_provinsi">
+                    <option value="">Semua Provinsi</option>
+                </select>
+
+                <select name="p_kota" id="filter_kota">
+                    <option value="">Semua Kota/Kabupaten</option>
+                </select>
+
                 <button type="submit" class="btn-filter-gold">CARI PERSONEL</button>
             </div>
         </form>
+
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+jQuery(document).ready(function($) {
+    var filterProvinsi = '<?php echo $filter_provinsi; ?>';
+    var filterKota = '<?php echo $filter_kota; ?>';
+
+    $('#filter_provinsi').select2({
+        placeholder: "Semua Provinsi",
+        width: '100%'
+    });
+    $('#filter_kota').select2({
+        placeholder: "Semua Kota/Kabupaten",
+        width: '100%'
+    });
+
+    fetch('https://emsifa.github.io/api-wilayah-indonesia/api/provinces.json')
+        .then(response => response.json())
+        .then(provinces => {
+            let options = '<option value="">Semua Provinsi</option>';
+            provinces.forEach(prov => {
+                var selected = (prov.name === filterProvinsi) ? 'selected' : '';
+                options += `<option value="${prov.name}" data-id="${prov.id}" ${selected}>${prov.name}</option>`;
+            });
+            $('#filter_provinsi').html(options).trigger('change');
+            if (filterProvinsi) {
+                var provId = $('#filter_provinsi').find(':selected').data('id');
+                if (provId) loadKotaFilter(provId);
+            }
+        });
+
+    function loadKotaFilter(provId) {
+        fetch(`https://emsifa.github.io/api-wilayah-indonesia/api/regencies/${provId}.json`)
+            .then(response => response.json())
+            .then(regencies => {
+                let options = '<option value="">Semua Kota/Kabupaten</option>';
+                regencies.forEach(reg => {
+                    var selected = (reg.name === filterKota) ? 'selected' : '';
+                    options += `<option value="${reg.name}" ${selected}>${reg.name}</option>`;
+                });
+                $('#filter_kota').html(options).trigger('change');
+            });
+    }
+
+    $('#filter_provinsi').on('change', function() {
+        var provId = $(this).find(':selected').data('id');
+        if (provId) {
+            loadKotaFilter(provId);
+        } else {
+            $('#filter_kota').html('<option value="">Semua Kota/Kabupaten</option>').trigger('change');
+        }
+    });
+});
+</script>
 
         <div class="personel-public-grid">
             <?php if ($results): foreach ($results as $p): 
@@ -4301,9 +4590,15 @@ $query .= " ORDER BY CASE WHEN p.rekomendasi = 'ya' THEN 0 ELSE 1 END ASC, p.id 
         
         /* Filter Styles */
         .personel-filter-form { background: var(--gray); padding: 20px; border-radius: 15px; margin-bottom: 40px; border: 1px solid #333; }
-        .filter-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 15px; }
+        .filter-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr 1fr; gap: 10px; }
         .filter-grid input, .filter-grid select { background: #000; border: 1px solid #444; color: #fff; padding: 12px; border-radius: 8px; outline: none; }
         .filter-grid input:focus { border-color: var(--gold); }
+        .select2-container--default .select2-selection--single { background-color: #000 !important; border: 1px solid #444 !important; border-radius: 8px !important; height: 46px !important; }
+        .select2-container--default .select2-selection--single .select2-selection__rendered { color: #fff !important; line-height: 46px !important; }
+        .select2-container--default .select2-selection--single .select2-selection__arrow { height: 46px !important; }
+        .select2-container--default .select2-results__option { background-color: #111; color: #fff; }
+        .select2-container--default .select2-results__option--highlighted[aria-selected] { background-color: #d4af37 !important; color: #000 !important; }
+        .select2-dropdown { background-color: #111 !important; border: 1px solid #444 !important; }
         .btn-filter-gold { background: var(--gold); color: #000; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; transition: 0.3s; }
         .btn-filter-gold:hover { background: #fff; box-shadow: 0 0 15px rgba(212, 175, 55, 0.4); }
 
@@ -4335,6 +4630,7 @@ $query .= " ORDER BY CASE WHEN p.rekomendasi = 'ya' THEN 0 ELSE 1 END ASC, p.id 
         .no-result { grid-column: 1/-1; text-align: center; color: #666; padding: 50px; }
 
         @media (max-width: 992px) { .personel-public-grid { grid-template-columns: repeat(2, 1fr); } .filter-grid { grid-template-columns: 1fr 1fr; } }
+        @media (max-width: 768px) { .filter-grid { grid-template-columns: 1fr; } }
         @media (max-width: 600px) { .personel-public-grid { grid-template-columns: 1fr; } .filter-grid { grid-template-columns: 1fr; } }
     </style>
     <style>
