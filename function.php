@@ -6846,3 +6846,409 @@ if (!$user) {
     return ob_get_clean();
 }
 add_shortcode('personel_reset_form', 'personel_reset_password_form_shortcode');
+
+// ============================================================
+// POPUP IKLAN - Global Portrait Popup Ad System
+// ============================================================
+
+/**
+ * Step 1: Create/verify the custom database table for popup ad
+ */
+function popup_ad_create_table() {
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'popup_ad';
+    $charset_collate = $wpdb->get_charset_collate();
+
+    $sql = "CREATE TABLE $table_name (
+        id INT NOT NULL AUTO_INCREMENT,
+        image_url VARCHAR(500) NOT NULL DEFAULT '',
+        link_url VARCHAR(500) DEFAULT '',
+        is_active TINYINT(1) DEFAULT 0,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (id)
+    ) $charset_collate;";
+
+    require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+    dbDelta($sql);
+
+    // Insert default row if table is empty
+    $row = $wpdb->get_var("SELECT COUNT(*) FROM $table_name");
+    if ($row == 0) {
+        $wpdb->insert($table_name, [
+            'image_url' => '',
+            'link_url'  => '',
+            'is_active'  => 0,
+        ]);
+    }
+}
+add_action('admin_init', 'popup_ad_create_table');
+
+/**
+ * Step 2: Register WP Admin Menu
+ */
+function popup_ad_admin_menu() {
+    add_menu_page(
+        'Popup Iklan',           // Page title
+        'Popup Iklan',           // Menu title
+        'manage_options',        // Capability
+        'popup-iklan',           // Menu slug
+        'popup_ad_admin_page',   // Callback
+        'dashicons-format-image', // Icon
+        80                       // Position
+    );
+}
+add_action('admin_menu', 'popup_ad_admin_menu');
+
+/**
+ * Step 2b: Enqueue media uploader on our admin page
+ */
+function popup_ad_admin_enqueue($hook) {
+    if ($hook !== 'toplevel_page_popup-iklan') {
+        return;
+    }
+    wp_enqueue_media();
+}
+add_action('admin_enqueue_scripts', 'popup_ad_admin_enqueue');
+
+/**
+ * Step 2c: Admin page render & save handler
+ */
+function popup_ad_admin_page() {
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'popup_ad';
+
+    // Handle save
+    if (isset($_POST['popup_ad_save']) && check_admin_referer('popup_ad_nonce_action', 'popup_ad_nonce_field')) {
+        $image_url = esc_url_raw(sanitize_text_field($_POST['popup_ad_image_url'] ?? ''));
+        $link_url  = esc_url_raw(sanitize_text_field($_POST['popup_ad_link_url'] ?? ''));
+        $is_active = isset($_POST['popup_ad_is_active']) ? 1 : 0;
+
+        $exists = $wpdb->get_var("SELECT COUNT(*) FROM $table_name WHERE id = 1");
+        if ($exists) {
+            $wpdb->update($table_name, [
+                'image_url' => $image_url,
+                'link_url'  => $link_url,
+                'is_active' => $is_active,
+            ], ['id' => 1]);
+        } else {
+            $wpdb->insert($table_name, [
+                'image_url' => $image_url,
+                'link_url'  => $link_url,
+                'is_active' => $is_active,
+            ]);
+        }
+
+        echo '<div class="notice notice-success is-dismissible"><p>Pengaturan Popup Iklan berhasil disimpan!</p></div>';
+    }
+
+    // Fetch current data
+    $data = $wpdb->get_row("SELECT * FROM $table_name WHERE id = 1");
+    $image_url = $data->image_url ?? '';
+    $link_url  = $data->link_url ?? '';
+    $is_active = $data->is_active ?? 0;
+    ?>
+    <div class="wrap">
+        <h1 style="display:flex;align-items:center;gap:10px;">
+            <span class="dashicons dashicons-format-image" style="font-size:30px;width:30px;height:30px;color:#e67e22;"></span>
+            Pengaturan Popup Iklan
+        </h1>
+        <p style="color:#666;font-size:14px;">Kelola iklan popup portrait yang tampil di seluruh halaman depan website.</p>
+        <hr>
+
+        <form method="post" style="max-width:700px;">
+            <?php wp_nonce_field('popup_ad_nonce_action', 'popup_ad_nonce_field'); ?>
+
+            <table class="form-table">
+                <tr>
+                    <th scope="row"><label for="popup_ad_image_url">Gambar Iklan (Portrait)</label></th>
+                    <td>
+                        <input type="text" id="popup_ad_image_url" name="popup_ad_image_url"
+                               value="<?php echo esc_attr($image_url); ?>"
+                               class="regular-text" style="width:100%;" placeholder="https://example.com/gambar-iklan.jpg" />
+                        <br><br>
+                        <button type="button" class="button button-secondary" id="popup_ad_upload_btn">
+                            <span class="dashicons dashicons-upload" style="vertical-align:middle;margin-right:4px;"></span>
+                            Upload / Pilih Gambar
+                        </button>
+                        <p class="description">Gunakan gambar portrait (rasio 2:3 atau 9:16) untuk hasil terbaik.</p>
+
+                        <!-- Preview -->
+                        <div id="popup_ad_preview" style="margin-top:15px;<?php echo empty($image_url) ? 'display:none;' : ''; ?>">
+                            <p style="font-weight:600;margin-bottom:8px;">Preview:</p>
+                            <div style="width:200px;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.15);border:2px solid #e0e0e0;">
+                                <img id="popup_ad_preview_img" src="<?php echo esc_url($image_url); ?>"
+                                     style="width:100%;height:auto;display:block;" />
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="popup_ad_link_url">Link Tujuan (Opsional)</label></th>
+                    <td>
+                        <input type="url" id="popup_ad_link_url" name="popup_ad_link_url"
+                               value="<?php echo esc_attr($link_url); ?>"
+                               class="regular-text" style="width:100%;" placeholder="https://example.com/promo" />
+                        <p class="description">Ketika gambar diklik, pengunjung akan diarahkan ke URL ini. Kosongkan jika tidak perlu.</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Status</th>
+                    <td>
+                        <label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;">
+                            <input type="checkbox" name="popup_ad_is_active" value="1" <?php checked($is_active, 1); ?> />
+                            <span style="font-weight:600;color:<?php echo $is_active ? '#27ae60' : '#e74c3c'; ?>;">
+                                <?php echo $is_active ? '● Aktif — Popup sedang ditampilkan' : '○ Nonaktif — Popup disembunyikan'; ?>
+                            </span>
+                        </label>
+                    </td>
+                </tr>
+            </table>
+
+            <p class="submit">
+                <button type="submit" name="popup_ad_save" class="button button-primary button-large">
+                    <span class="dashicons dashicons-saved" style="vertical-align:middle;margin-right:4px;"></span>
+                    Simpan Pengaturan
+                </button>
+            </p>
+        </form>
+    </div>
+
+    <script>
+    jQuery(document).ready(function($) {
+        // Media uploader
+        $('#popup_ad_upload_btn').on('click', function(e) {
+            e.preventDefault();
+            var frame = wp.media({
+                title: 'Pilih Gambar Iklan',
+                button: { text: 'Gunakan Gambar Ini' },
+                multiple: false,
+                library: { type: 'image' }
+            });
+            frame.on('select', function() {
+                var attachment = frame.state().get('selection').first().toJSON();
+                $('#popup_ad_image_url').val(attachment.url);
+                $('#popup_ad_preview_img').attr('src', attachment.url);
+                $('#popup_ad_preview').show();
+            });
+            frame.open();
+        });
+
+        // Live preview on manual URL change
+        $('#popup_ad_image_url').on('input change', function() {
+            var val = $(this).val();
+            if (val) {
+                $('#popup_ad_preview_img').attr('src', val);
+                $('#popup_ad_preview').show();
+            } else {
+                $('#popup_ad_preview').hide();
+            }
+        });
+    });
+    </script>
+    <?php
+}
+
+/**
+ * Step 3: Render popup on the frontend (all pages)
+ */
+function popup_ad_render_frontend() {
+    // Don't show in admin or login pages
+    if (is_admin() || wp_doing_ajax()) {
+        return;
+    }
+
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'popup_ad';
+
+    // Check if the table exists first
+    $table_exists = $wpdb->get_var("SHOW TABLES LIKE '$table_name'");
+    if (!$table_exists) {
+        return;
+    }
+
+    $data = $wpdb->get_row("SELECT * FROM $table_name WHERE id = 1");
+
+    // Only render if active and image exists
+    if (!$data || !$data->is_active || empty($data->image_url)) {
+        return;
+    }
+
+    $image_url = esc_url($data->image_url);
+    $link_url  = esc_url($data->link_url);
+    $has_link  = !empty($link_url);
+    ?>
+
+    <!-- Popup Iklan - Global Portrait Ad -->
+    <style>
+        /* Overlay */
+        .popup-iklan-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 999999;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+                        visibility 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .popup-iklan-overlay.popup-iklan-show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* Container */
+        .popup-iklan-container {
+            position: relative;
+            max-width: 380px;
+            width: 88vw;
+            transform: scale(0.85) translateY(30px);
+            transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .popup-iklan-overlay.popup-iklan-show .popup-iklan-container {
+            transform: scale(1) translateY(0);
+        }
+
+        /* Image wrapper */
+        .popup-iklan-img-wrap {
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5),
+                        0 0 0 1px rgba(255, 255, 255, 0.08);
+            line-height: 0;
+        }
+        .popup-iklan-img-wrap img {
+            width: 100%;
+            height: auto;
+            display: block;
+            object-fit: cover;
+        }
+        .popup-iklan-img-wrap a {
+            display: block;
+            line-height: 0;
+        }
+
+        /* Close button */
+        .popup-iklan-close {
+            position: absolute;
+            top: -16px;
+            right: -16px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #ffffff;
+            color: #1a1a1a;
+            border: 3px solid rgba(0, 0, 0, 0.1);
+            font-size: 20px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+            transition: all 0.25s ease;
+            z-index: 10;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+        .popup-iklan-close:hover {
+            background: #ef4444;
+            color: #ffffff;
+            border-color: #ef4444;
+            transform: scale(1.15) rotate(90deg);
+            box-shadow: 0 4px 20px rgba(239, 68, 68, 0.5);
+        }
+
+        /* Mobile adjustments */
+        @media (max-width: 480px) {
+            .popup-iklan-container {
+                max-width: 320px;
+                width: 85vw;
+            }
+            .popup-iklan-close {
+                top: -12px;
+                right: -12px;
+                width: 36px;
+                height: 36px;
+                font-size: 18px;
+            }
+            .popup-iklan-img-wrap {
+                border-radius: 12px;
+            }
+        }
+    </style>
+
+    <div class="popup-iklan-overlay" id="popupIklanOverlay">
+        <div class="popup-iklan-container">
+            <button class="popup-iklan-close" id="popupIklanClose" aria-label="Tutup Popup" title="Tutup">&#10005;</button>
+            <div class="popup-iklan-img-wrap">
+                <?php if ($has_link): ?>
+                    <a href="<?php echo $link_url; ?>" target="_blank" rel="noopener noreferrer">
+                        <img src="<?php echo $image_url; ?>" alt="Iklan Popup" />
+                    </a>
+                <?php else: ?>
+                    <img src="<?php echo $image_url; ?>" alt="Iklan Popup" />
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    (function() {
+        var overlay = document.getElementById('popupIklanOverlay');
+        var closeBtn = document.getElementById('popupIklanClose');
+        if (!overlay || !closeBtn) return;
+
+        // Session-based: show only once per browser session
+        var storageKey = 'popup_iklan_closed';
+        if (sessionStorage.getItem(storageKey) === '1') {
+            overlay.remove();
+            return;
+        }
+
+        // Show the popup after a brief delay for smoother entry
+        setTimeout(function() {
+            overlay.classList.add('popup-iklan-show');
+        }, 500);
+
+        function closePopup() {
+            overlay.classList.remove('popup-iklan-show');
+            sessionStorage.setItem(storageKey, '1');
+            setTimeout(function() {
+                overlay.remove();
+            }, 450);
+        }
+
+        // Close button
+        closeBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            closePopup();
+        });
+
+        // Click outside image to close
+        overlay.addEventListener('click', function(e) {
+            if (e.target === overlay) {
+                closePopup();
+            }
+        });
+
+        // ESC key to close
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && overlay.classList.contains('popup-iklan-show')) {
+                closePopup();
+            }
+        });
+    })();
+    </script>
+    <!-- /Popup Iklan -->
+
+    <?php
+}
+add_action('wp_footer', 'popup_ad_render_frontend', 9999);
