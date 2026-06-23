@@ -2240,10 +2240,30 @@ if (isset($_POST['submit_video']) || isset($_POST['update_video'])) {
     ];
 
     if ($is_edit) {
-        $wpdb->update('wp9y_portofolio_video', $data, ['id' => intval($_POST['video_id']), 'personel_id' => $personel_id]);
+        $video_id = intval($_POST['video_id']);
+        $wpdb->update('wp9y_portofolio_video', $data, ['id' => $video_id, 'personel_id' => $personel_id]);
+        
+        $wpdb->delete($wpdb->prefix . 'portofolio_video_kategori_map', ['video_id' => $video_id]);
+        $selected_kategori = isset($_POST['portfolio_kategori']) ? array_slice(array_map('intval', $_POST['portfolio_kategori']), 0, 3) : [];
+        foreach ($selected_kategori as $cat_id) {
+            $wpdb->insert($wpdb->prefix . 'portofolio_video_kategori_map', [
+                'video_id' => $video_id,
+                'kategori_id' => $cat_id,
+            ]);
+        }
         $msg = "Video berhasil diperbarui!";
     } else {
         $wpdb->insert('wp9y_portofolio_video', $data);
+        $new_video_id = $wpdb->insert_id;
+        if ($new_video_id) {
+            $selected_kategori = isset($_POST['portfolio_kategori']) ? array_slice(array_map('intval', $_POST['portfolio_kategori']), 0, 3) : [];
+            foreach ($selected_kategori as $cat_id) {
+                $wpdb->insert($wpdb->prefix . 'portofolio_video_kategori_map', [
+                    'video_id' => $new_video_id,
+                    'kategori_id' => $cat_id,
+                ]);
+            }
+        }
         $msg = "Video berhasil diunggah!";
     }
     echo "<script>alert('$msg'); window.location.href='?tab=video';</script>";
@@ -2275,6 +2295,17 @@ if (isset($_POST['update_portofolio'])) {
         }
 
         $wpdb->update('wp9y_portofolio', $data_update, ['id' => $porto_id, 'personel_id' => $personel_id]);
+        
+        // Update kategori (many-to-many)
+        $wpdb->delete($wpdb->prefix . 'portofolio_kategori_map', ['portofolio_id' => $porto_id]);
+        $selected_kategori = isset($_POST['portfolio_kategori']) ? array_slice(array_map('intval', $_POST['portfolio_kategori']), 0, 3) : [];
+        foreach ($selected_kategori as $cat_id) {
+            $wpdb->insert($wpdb->prefix . 'portofolio_kategori_map', [
+                'portofolio_id' => $porto_id,
+                'kategori_id'   => $cat_id,
+            ]);
+        }
+
         echo "<script>alert('Perubahan disimpan! Mohon tunggu persetujuan admin kembali.'); window.location.href='?tab=foto';</script>";
     }
 }	
@@ -2293,6 +2324,7 @@ if (isset($_GET['tab']) && $_GET['tab'] == 'foto' && isset($_GET['action']) && $
         if (file_exists($file_path)) unlink($file_path);
 
         // Hapus data dari database
+        $wpdb->delete($wpdb->prefix . 'portofolio_kategori_map', ['portofolio_id' => $porto_id]);
         $wpdb->delete('wp9y_portofolio', ['id' => $porto_id]);
         
         echo "<script>alert('Portofolio telah dihapus.'); window.location.href='?tab=foto';</script>";
@@ -2335,6 +2367,18 @@ if (isset($_POST['submit_portofolio'])) {
             'tags'             => sanitize_text_field($_POST['tags']),
             'status'           => 'pending'
         ]);
+        
+        $new_porto_id = $wpdb->insert_id;
+        if ($new_porto_id) {
+            $selected_kategori = isset($_POST['portfolio_kategori']) ? array_slice(array_map('intval', $_POST['portfolio_kategori']), 0, 3) : [];
+            foreach ($selected_kategori as $cat_id) {
+                $wpdb->insert($wpdb->prefix . 'portofolio_kategori_map', [
+                    'portofolio_id' => $new_porto_id,
+                    'kategori_id'   => $cat_id,
+                ]);
+            }
+        }
+
         echo "<script>alert('Portofolio berhasil diunggah! Menunggu moderasi admin.'); window.location.href='?tab=foto';</script>";
     } else {
         // Jika user mengunggah file selain format di atas, $movefile['error'] akan berisi pesan penolakan
@@ -2563,6 +2607,7 @@ if (!empty($_FILES['sertifikat_files']['name'][0])) {
 					// Logika Hapus Video
 					if ($action == 'delete' && $id > 0) {
 						global $wpdb;
+						$wpdb->delete($wpdb->prefix . 'portofolio_video_kategori_map', ['video_id' => $id]);
 						$wpdb->delete('wp9y_portofolio_video', [
 							'id' => $id, 
 							'personel_id' => $_SESSION['personel_id']
@@ -2686,7 +2731,7 @@ function render_tab_edit_portofolio($personel, $porto_id) {
                 <small style="color:var(--text-muted);">Maksimal 10 tags. Contoh: cinematic, wedding, colorist</small>
             </div>
 
-            
+            <?php render_portfolio_category_selection($porto->id, 'foto'); ?>
 
             <button type="submit" name="update_portofolio" class="btn-update">
                 💾 Simpan Perubahan
@@ -3017,8 +3062,7 @@ function render_tab_portofolio_foto($personel) {
     <small style="color:var(--text-muted);">Maksimal 10 tags. Contoh: cinematic, wedding, colorist</small>
 </div>
             
-
-            
+            <?php render_portfolio_category_selection(0, 'foto'); ?>
 
             <button type="submit" name="submit_portofolio" class="btn-update">
                 🚀 Unggah Portofolio
@@ -4168,7 +4212,7 @@ function render_tab_form_video($personel, $video_id = 0) {
                 </div>
             </div>
 
-           
+            <?php render_portfolio_category_selection($video_id, 'video'); ?>
 
             <button type="submit" name="<?php echo $video_id ? 'update_video' : 'submit_video'; ?>" class="btn-update">
                 🚀 <?php echo $video_id ? 'Simpan Perubahan' : 'Unggah Video'; ?>
@@ -5375,6 +5419,7 @@ function shortcode_arsip_foto() {
     global $wpdb;
     ob_start(); ?>
     <div class="lx-archive">
+        <?php render_portfolio_category_filter_bar('foto'); ?>
         <div class="lx-filter-header">
             <input type="text" id="search-foto" class="lx-input-flex" placeholder="Cari nama, lokasi, atau tags...">
             <input type="date" id="filter-tgl-foto" class="lx-input-flex" title="Filter Tanggal Spesifik">
@@ -5421,9 +5466,25 @@ function handle_ajax_load_more() {
     $tahun  = sanitize_text_field($_POST['tahun']);
     $sort   = sanitize_text_field($_POST['sort']);
 
+    $category = isset($_POST['category']) ? sanitize_text_field($_POST['category']) : '';
+
+    $join = "";
+    $where_cat = "";
+    if (!empty($category) && $category !== 'semua') {
+        if ($type === 'video') {
+            $join = " JOIN {$wpdb->prefix}portofolio_video_kategori_map m ON t.id = m.video_id 
+                      JOIN {$wpdb->prefix}kategori k ON m.kategori_id = k.id ";
+        } else {
+            $join = " JOIN {$wpdb->prefix}portofolio_kategori_map m ON t.id = m.portofolio_id 
+                      JOIN {$wpdb->prefix}kategori k ON m.kategori_id = k.id ";
+        }
+        $where_cat = $wpdb->prepare(" AND k.slug = %s ", $category);
+    }
+
     $query = "SELECT t.*, p.nama_panggilan, p.kode_nama FROM $table t 
               JOIN wp9y_personel p ON t.personel_id = p.id 
-              WHERE t.status = 'approved' AND p.status = 'approved'";
+              $join
+              WHERE t.status = 'approved' AND p.status = 'approved' $where_cat";
 
     if(!empty($search)) {
         $query .= $wpdb->prepare(" AND (t.lokasi LIKE %s OR p.nama_panggilan LIKE %s OR t.tags LIKE %s)", '%'.$search.'%', '%'.$search.'%', '%'.$search.'%');
@@ -5541,7 +5602,8 @@ jQuery(document).ready(function($) {
             search: $('#search-foto').val(),
             tanggal: $('#filter-tgl-foto').val(),
             tahun: $('#filter-tahun-foto').val(),
-            sort: $('#sort-foto').val()
+            sort: $('#sort-foto').val(),
+            category: $('#active-category-slug').val()
 
         }, function(res) {
 
@@ -5583,9 +5645,9 @@ jQuery(document).ready(function($) {
                         .prop('disabled', true);
 
                 }
-            }
         });
     }
+    window.getPorto = getPorto;
 
     $('#btn-filter-foto, #sort-foto').on('change click', function() {
         getPorto(true);
@@ -5693,6 +5755,7 @@ function shortcode_arsip_video_fixed() {
     global $wpdb;
     ob_start(); ?>
     <div class="lx-archive">
+        <?php render_portfolio_category_filter_bar('video'); ?>
         <div class="lx-filter-header">
             <input type="text" id="search-video" class="lx-input-flex" placeholder="Cari nama, lokasi, atau tags...">
             <input type="date" id="filter-tgl-video" class="lx-input-flex">
@@ -5735,10 +5798,21 @@ function ajax_video_handler_fixed() {
     $tahun  = isset($_POST['tahun']) ? sanitize_text_field($_POST['tahun']) : '';
     $sort   = isset($_POST['sort']) ? sanitize_text_field($_POST['sort']) : '';
 
+    $category = isset($_POST['category']) ? sanitize_text_field($_POST['category']) : '';
+
+    $join = "";
+    $where_cat = "";
+    if (!empty($category) && $category !== 'semua') {
+        $join = " JOIN {$wpdb->prefix}portofolio_video_kategori_map m ON v.id = m.video_id 
+                  JOIN {$wpdb->prefix}kategori k ON m.kategori_id = k.id ";
+        $where_cat = $wpdb->prepare(" AND k.slug = %s ", $category);
+    }
+
     // PERBAIKAN: Tambahkan p.kode_nama di SELECT agar render_video_item_html tidak error
     $query = "SELECT v.*, p.nama_panggilan, p.kode_nama FROM wp9y_portofolio_video v 
               JOIN wp9y_personel p ON v.personel_id = p.id 
-              WHERE v.status = 'approved' AND p.status = 'approved'";
+              $join
+              WHERE v.status = 'approved' AND p.status = 'approved' $where_cat";
 
     // Filter Pencarian
     if(!empty($search)) {
@@ -5944,7 +6018,8 @@ jQuery(document).ready(function($) {
                 tanggal: $('#filter-tgl-video').val(),
                 tahun: $('#filter-tahun-video').val(),
                 sort: $('#sort-video').val(),
-                offset: offset
+                offset: offset,
+                category: $('#active-category-slug-video').val()
             },
 
             success: function(res) {
@@ -6003,6 +6078,7 @@ jQuery(document).ready(function($) {
             }
         });
     }
+    window.jalankanCariVideo = jalankanCariVideo;
 
     // FILTER & SORT
     $(document)
@@ -7419,3 +7495,731 @@ function popup_ad_render_frontend() {
     <?php
 }
 add_action('wp_footer', 'popup_ad_render_frontend', 9999);
+
+// ============================================================
+// SISTEM KATEGORI PORTOFOLIO (MANY-TO-MANY)
+// ============================================================
+
+/**
+ * Step 1: Create custom database tables and populate categories
+ */
+function portfolio_kategori_setup_db() {
+    global $wpdb;
+    $kategori_table = $wpdb->prefix . 'kategori';
+    $map_foto_table = $wpdb->prefix . 'portofolio_kategori_map';
+    $map_video_table = $wpdb->prefix . 'portofolio_video_kategori_map';
+    $charset_collate = $wpdb->get_charset_collate();
+
+    require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+
+    // Create kategori table
+    $sql_kategori = "CREATE TABLE $kategori_table (
+        id INT NOT NULL AUTO_INCREMENT,
+        nama VARCHAR(100) NOT NULL UNIQUE,
+        slug VARCHAR(100) NOT NULL UNIQUE,
+        deskripsi TEXT,
+        PRIMARY KEY (id)
+    ) $charset_collate;";
+    dbDelta($sql_kategori);
+
+    // Create mapping table for photos
+    $sql_map_foto = "CREATE TABLE $map_foto_table (
+        portofolio_id BIGINT NOT NULL,
+        kategori_id INT NOT NULL,
+        PRIMARY KEY (portofolio_id, kategori_id)
+    ) $charset_collate;";
+    dbDelta($sql_map_foto);
+
+    // Create mapping table for videos
+    $sql_map_video = "CREATE TABLE $map_video_table (
+        video_id BIGINT NOT NULL,
+        kategori_id INT NOT NULL,
+        PRIMARY KEY (video_id, kategori_id)
+    ) $charset_collate;";
+    dbDelta($sql_map_video);
+
+    // Populate categories if empty
+    $count = $wpdb->get_var("SELECT COUNT(*) FROM $kategori_table");
+    if ($count == 0) {
+        $categories = [
+            [
+                'nama' => 'Wedding & Personal',
+                'slug' => 'wedding-personal',
+                'deskripsi' => 'Dokumentasi pernikahan dan sesi pribadi seperti prewedding, foto keluarga, maternity, wisuda, hingga personal branding.'
+            ],
+            [
+                'nama' => 'Corporate & Company',
+                'slug' => 'corporate-company',
+                'deskripsi' => 'Dokumentasi komersial perusahaan, profil bisnis, event korporasi, kegiatan industri, serta dokumentasi instansi pemerintah.'
+            ],
+            [
+                'nama' => 'Event Documentation',
+                'slug' => 'event-documentation',
+                'deskripsi' => 'Dokumentasi acara skala besar/kecil seperti festival musik, konser, acara komunitas, serta liputan kompetisi olahraga.'
+            ],
+            [
+                'nama' => 'Commercial & Advertising',
+                'slug' => 'commercial-advertising',
+                'deskripsi' => 'Pembuatan iklan TV, iklan digital, foto & video produk komersial, makanan & minuman (F&B), serta konten kreatif media sosial.'
+            ],
+            [
+                'nama' => 'Media & Entertainment',
+                'slug' => 'media-entertainment',
+                'deskripsi' => 'Produksi video klip musik, program penyiaran (talkshow/podcast), dokumentasi talenta/artis, serta karya jurnalistik.'
+            ],
+            [
+                'nama' => 'Film & Cinematic',
+                'slug' => 'film-cinematic',
+                'deskripsi' => 'Produksi film pendek/indie, web series, video cinematic perjalanan (travel), film dokumenter, hingga motion graphics.'
+            ],
+            [
+                'nama' => 'Drone & Aerial',
+                'slug' => 'drone-aerial',
+                'deskripsi' => 'Pengambilan gambar dari udara menggunakan drone untuk kebutuhan sinematik, dokumentasi, pemetaan (mapping), hingga inspeksi.'
+            ],
+            [
+                'nama' => 'Outdoor, Travel & Nature',
+                'slug' => 'outdoor-travel-nature',
+                'deskripsi' => 'Dokumentasi petualangan outdoor, promosi pariwisata & perhotelan, keindahan alam (landscape), serta kehidupan alam liar.'
+            ],
+            [
+                'nama' => 'Photography Art & Style',
+                'slug' => 'photography-art-style',
+                'deskripsi' => 'Karya seni fotografi dalam berbagai aliran seperti street photography, fine art, portrait, fashion photoshoot, hingga arsitektur.'
+            ],
+            [
+                'nama' => 'Multimedia & Production Service',
+                'slug' => 'multimedia-production-service',
+                'deskripsi' => 'Layanan produksi live streaming event, jasa editing & color grading, penulisan naskah, serta manajemen konten digital.'
+            ],
+            [
+                'nama' => 'Lainnya',
+                'slug' => 'lainnya',
+                'deskripsi' => 'Kategori alternatif untuk bidang kreatif khusus yang tidak tercantum dalam 10 kategori utama.'
+            ]
+        ];
+        foreach ($categories as $cat) {
+            $wpdb->insert($kategori_table, [
+                'nama' => $cat['nama'],
+                'slug' => $cat['slug'],
+                'deskripsi' => $cat['deskripsi']
+            ]);
+        }
+    }
+}
+add_action('admin_init', 'portfolio_kategori_setup_db');
+
+/**
+ * Step 2: Render category selection checkboxes in personnel dashboard forms (up to 3)
+ */
+function render_portfolio_category_selection($porto_id = 0, $type = 'foto') {
+    global $wpdb;
+    
+    // Check table existence to prevent errors
+    $table_kategori = $wpdb->prefix . 'kategori';
+    $table_exists = $wpdb->get_var("SHOW TABLES LIKE '$table_kategori'");
+    if (!$table_exists) {
+        return;
+    }
+
+    $categories = $wpdb->get_results("SELECT * FROM $table_kategori ORDER BY id ASC");
+    if (empty($categories)) {
+        return;
+    }
+    
+    $selected_cats = [];
+    if ($porto_id > 0) {
+        $table_map = ($type === 'video') ? $wpdb->prefix . 'portofolio_video_kategori_map' : $wpdb->prefix . 'portofolio_kategori_map';
+        $id_column = ($type === 'video') ? 'video_id' : 'portofolio_id';
+        $selected_cats = $wpdb->get_col($wpdb->prepare("SELECT kategori_id FROM $table_map WHERE $id_column = %d", $porto_id));
+    }
+    ?>
+    <style>
+        .porto-cat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 12px;
+            margin-top: 10px;
+        }
+        .porto-cat-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #1a1a1a;
+            padding: 10px 14px;
+            border-radius: 6px;
+            border: 1px solid #333;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+        .porto-cat-item:hover {
+            border-color: #d4af37;
+            background: #222;
+        }
+        .porto-cat-item input[type="checkbox"] {
+            margin: 0;
+            accent-color: #d4af37;
+            cursor: pointer;
+        }
+        .porto-cat-item span {
+            font-size: 13px;
+            color: #eee;
+            font-weight: 500;
+        }
+        .porto-cat-item.selected {
+            border-color: #d4af37;
+            background: rgba(212, 175, 55, 0.1);
+        }
+        .porto-cat-item.disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .porto-cat-item.disabled input {
+            cursor: not-allowed;
+        }
+    </style>
+
+    <div class="form-group full" style="margin-bottom: 25px;">
+        <label style="display:block; margin-bottom:5px; color:#d4af37; font-weight:bold;">
+            Kategori Portofolio (Maksimal Pilih 3) <span style="font-weight:normal; font-size:12px; color:#aaa;">- Opsional</span>
+        </label>
+        <div class="porto-cat-grid">
+            <?php foreach ($categories as $cat) : 
+                $checked = in_array($cat->id, $selected_cats) ? 'checked' : '';
+                $item_class = $checked ? 'selected' : '';
+            ?>
+                <label class="porto-cat-item <?php echo $item_class; ?>">
+                    <input type="checkbox" name="portfolio_kategori[]" value="<?php echo $cat->id; ?>" <?php echo $checked; ?> class="porto-cat-cb">
+                    <span><?php echo esc_html($cat->nama); ?></span>
+                </label>
+            <?php endforeach; ?>
+        </div>
+        <small style="color:var(--text-muted); display:block; margin-top:8px;">Pilih maksimal 3 kategori yang paling relevan dengan karya portofolio ini.</small>
+    </div>
+
+    <script>
+    jQuery(document).ready(function($) {
+        function updateCheckboxLimit() {
+            var checkedCbs = $('.porto-cat-cb:checked');
+            var uncheckedCbs = $('.porto-cat-cb:not(:checked)');
+            
+            // Highlight selected labels
+            $('.porto-cat-item').removeClass('selected');
+            checkedCbs.closest('.porto-cat-item').addClass('selected');
+
+            if (checkedCbs.length >= 3) {
+                uncheckedCbs.prop('disabled', true);
+                uncheckedCbs.closest('.porto-cat-item').addClass('disabled');
+            } else {
+                $('.porto-cat-cb').prop('disabled', false);
+                $('.porto-cat-item').removeClass('disabled');
+            }
+        }
+
+        // Handle change event
+        $(document).on('change', '.porto-cat-cb', function() {
+            updateCheckboxLimit();
+        });
+
+        // Initialize on load
+        updateCheckboxLimit();
+    });
+    </script>
+    <?php
+}
+
+/**
+ * Step 3: Render category sub-navbar filter bar and explanation box in frontend
+ */
+function render_portfolio_category_filter_bar($type = 'foto') {
+    $categories = [
+        ['nama' => 'Wedding & Personal', 'slug' => 'wedding-personal'],
+        ['nama' => 'Corporate & Company', 'slug' => 'corporate-company'],
+        ['nama' => 'Event Documentation', 'slug' => 'event-documentation'],
+        ['nama' => 'Commercial & Advertising', 'slug' => 'commercial-advertising'],
+        ['nama' => 'Media & Entertainment', 'slug' => 'media-entertainment'],
+        ['nama' => 'Film & Cinematic', 'slug' => 'film-cinematic'],
+        ['nama' => 'Drone & Aerial', 'slug' => 'drone-aerial'],
+        ['nama' => 'Outdoor, Travel & Nature', 'slug' => 'outdoor-travel-nature'],
+        ['nama' => 'Photography Art & Style', 'slug' => 'photography-art-style'],
+        ['nama' => 'Multimedia & Production Service', 'slug' => 'multimedia-production-service'],
+        ['nama' => 'Lainnya', 'slug' => 'lainnya']
+    ];
+    
+    $input_id = ($type === 'video') ? 'active-category-slug-video' : 'active-category-slug';
+    ?>
+    <style>
+        .lx-cat-nav-wrapper {
+            margin: 20px 0 15px 0;
+            background: rgba(17, 17, 17, 0.9);
+            border: 1px solid #222;
+            border-radius: 12px;
+            padding: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .lx-cat-nav {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding: 5px;
+            scrollbar-width: none; /* Hide scrollbar for Firefox */
+            -ms-overflow-style: none; /* Hide scrollbar for IE/Edge */
+        }
+        .lx-cat-nav::-webkit-scrollbar {
+            display: none; /* Hide scrollbar for Chrome/Safari */
+        }
+        .lx-cat-btn {
+            background: #151515;
+            color: #888;
+            border: 1px solid #2a2a2a;
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            white-space: nowrap;
+        }
+        .lx-cat-btn:hover {
+            border-color: #d4af37;
+            color: #d4af37;
+            transform: translateY(-1px);
+        }
+        .lx-cat-btn.active {
+            background: #d4af37;
+            color: #000;
+            border-color: #d4af37;
+            box-shadow: 0 4px 15px rgba(212, 175, 55, 0.35);
+        }
+        
+        @media (min-width: 992px) {
+            .lx-cat-nav {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+        }
+
+        /* Detail Box Styles */
+        .lx-cat-detail-box {
+            background: linear-gradient(135deg, #121212 0%, #0d0d0d 100%);
+            border: 1px solid #222;
+            border-left: 4px solid #d4af37;
+            border-radius: 8px;
+            padding: 24px;
+            margin: 0 0 30px 0;
+            display: none; /* Controlled via JS */
+            box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+        }
+        
+        .lx-cat-detail-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 25px;
+        }
+        @media (min-width: 769px) {
+            .lx-cat-detail-grid {
+                grid-template-columns: 1fr 2.5fr;
+            }
+        }
+        .lx-cat-detail-left h3 {
+            color: #d4af37;
+            font-family: 'Playfair Display', serif;
+            font-size: 22px;
+            margin: 0 0 12px 0;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+        }
+        .lx-cat-detail-left p {
+            color: #aaa;
+            font-size: 13.5px;
+            line-height: 1.6;
+            margin: 0;
+        }
+        .lx-cat-detail-right {
+            border-top: 1px solid #222;
+            padding-top: 20px;
+        }
+        @media (min-width: 769px) {
+            .lx-cat-detail-right {
+                border-top: none;
+                border-left: 1px solid #222;
+                padding-top: 0;
+                padding-left: 25px;
+            }
+        }
+        .lx-cat-detail-right-title {
+            color: #888;
+            font-size: 11px;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            font-weight: 700;
+            margin-bottom: 15px;
+        }
+        .lx-cat-columns {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        .lx-cat-group {
+            margin-bottom: 10px;
+        }
+        .lx-cat-group-name {
+            color: #d4af37;
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .lx-cat-group-name::before {
+            content: '▫';
+            color: #d4af37;
+        }
+        .lx-cat-group-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .lx-cat-group-list li {
+            color: #bbb;
+            font-size: 12.5px;
+            line-height: 1.5;
+            margin-bottom: 6px;
+            padding-left: 12px;
+            position: relative;
+        }
+        .lx-cat-group-list li::before {
+            content: '•';
+            color: #666;
+            position: absolute;
+            left: 0;
+            top: 0;
+        }
+    </style>
+
+    <input type="hidden" id="<?php echo $input_id; ?>" value="semua">
+    
+    <div class="lx-cat-nav-wrapper">
+        <div class="lx-cat-nav">
+            <button class="lx-cat-btn active" data-slug="semua">Semua Kategori</button>
+            <?php foreach ($categories as $cat): ?>
+                <button class="lx-cat-btn" data-slug="<?php echo esc_attr($cat['slug']); ?>">
+                    <?php echo esc_html($cat['nama']); ?>
+                </button>
+            <?php endforeach; ?>
+        </div>
+    </div>
+
+    <div class="lx-cat-detail-box" id="lx-cat-detail-box-<?php echo $type; ?>">
+        <div class="lx-cat-detail-grid">
+            <div class="lx-cat-detail-left">
+                <h3 id="lx-cat-title-<?php echo $type; ?>"></h3>
+                <p id="lx-cat-desc-<?php echo $type; ?>"></p>
+            </div>
+            <div class="lx-cat-detail-right">
+                <div class="lx-cat-detail-right-title">Bidang / Layanan Yang Dicakup</div>
+                <div class="lx-cat-columns" id="lx-cat-columns-<?php echo $type; ?>"></div>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+    jQuery(document).ready(function($) {
+        const categoriesData = {
+          "semua": {
+            "title": "Semua Kategori",
+            "desc": "Menampilkan seluruh karya portofolio personel kreatif kami dalam berbagai bidang keahlian.",
+            "columns": []
+          },
+          "wedding-personal": {
+            "title": "Wedding & Personal",
+            "desc": "Dokumentasi pernikahan dan sesi pribadi seperti prewedding, foto keluarga, maternity, wisuda, hingga personal branding.",
+            "columns": [
+              {
+                "group": "Wedding",
+                "items": ["Wedding Day", "Akad Nikah", "Resepsi", "Intimate Wedding", "Destination Wedding", "Traditional Wedding"]
+              },
+              {
+                "group": "Prewedding",
+                "items": ["Outdoor Prewedding", "Studio Prewedding", "Cinematic Prewedding", "Casual Prewedding"]
+              },
+              {
+                "group": "Personal & Family",
+                "items": ["Family Session", "Couple Session", "Maternity", "Baby Born", "Kids Photography", "Birthday", "Sweet 17", "Graduation / Wisuda", "Personal Branding"]
+              }
+            ]
+          },
+          "corporate-company": {
+            "title": "Corporate & Company",
+            "desc": "Dokumentasi komersial perusahaan, profil bisnis, event korporasi, kegiatan industri, serta dokumentasi instansi pemerintah.",
+            "columns": [
+              {
+                "group": "Company Profile",
+                "items": ["Company Profile Video", "Company Profile Photo", "Office Documentation", "Factory Documentation", "Industrial Documentation"]
+              },
+              {
+                "group": "Corporate Event",
+                "items": ["Gathering", "Meeting", "Seminar", "Workshop", "Conference", "Training / Pelatihan", "Launching Event", "Awarding", "Expo / Exhibition"]
+              },
+              {
+                "group": "Industrial & Safety",
+                "items": ["Safety Induction", "SOP Video", "Construction Documentation", "Manufacturing Documentation", "Warehouse Activity"]
+              },
+              {
+                "group": "Government & Institution",
+                "items": ["CSR", "Government Event", "BUMN", "School / Campus Documentation", "Pelantikan", "Ceremony"]
+              }
+            ]
+          },
+          "event-documentation": {
+            "title": "Event Documentation",
+            "desc": "Dokumentasi acara skala besar/kecil seperti festival musik, konser, acara komunitas, serta liputan kompetisi olahraga.",
+            "columns": [
+              {
+                "group": "General Event",
+                "items": ["Festival", "Concert", "Community Event", "Religious Event", "Cultural Event", "School Event", "Campus Event"]
+              },
+              {
+                "group": "Event Coverage",
+                "items": ["Event Photography", "Event Videography", "Multi Camera Event", "Highlight Video", "Aftermovie", "Live Event Coverage"]
+              },
+              {
+                "group": "Competition & Sport",
+                "items": ["Competition", "Sports Event", "E-Sport Event", "Tournament"]
+              }
+            ]
+          },
+          "commercial-advertising": {
+            "title": "Commercial & Advertising",
+            "desc": "Pembuatan iklan TV, iklan digital, foto & video produk komersial, makanan & minuman (F&B), serta konten kreatif media sosial.",
+            "columns": [
+              {
+                "group": "Advertising",
+                "items": ["TV Commercial / TVC", "Digital Ads", "Campaign Video", "Promotional Video", "Branding Video"]
+              },
+              {
+                "group": "Product",
+                "items": ["Product Photography", "Product Videography", "Marketplace Product", "E-Commerce Product", "Beauty Product", "Fashion Product", "Gadget Product", "Automotive Product"]
+              },
+              {
+                "group": "Food & Beverage",
+                "items": ["Food Photography", "Beverage Photography", "Restaurant Content", "Cafe Content", "Cooking Video"]
+              },
+              {
+                "group": "Social Media Content",
+                "items": ["Instagram Content", "TikTok Content", "YouTube Content", "Reels & Shorts", "Testimonial Video"]
+              }
+            ]
+          },
+          "media-entertainment": {
+            "title": "Media & Entertainment",
+            "desc": "Produksi video klip musik, program penyiaran (talkshow/podcast), dokumentasi talenta/artis, serta karya jurnalistik.",
+            "columns": [
+              {
+                "group": "Music",
+                "items": ["Music Video", "Live Music", "Band Session", "Acoustic Session", "Studio Session"]
+              },
+              {
+                "group": "Broadcasting",
+                "items": ["TV Program", "Talkshow", "Podcast", "Interview", "Live Podcast"]
+              },
+              {
+                "group": "Entertainment",
+                "items": ["Behind The Scene", "B-Roll", "Talent Documentation", "Artist Documentation"]
+              },
+              {
+                "group": "Journalism",
+                "items": ["News Coverage", "Journalism", "Human Interest", "Documentary News"]
+              }
+            ]
+          },
+          "film-cinematic": {
+            "title": "Film & Cinematic",
+            "desc": "Produksi film pendek/indie, web series, video cinematic perjalanan (travel), film dokumenter, hingga motion graphics.",
+            "columns": [
+              {
+                "group": "Film Production",
+                "items": ["Short Film", "Indie Film", "Web Series", "Mini Series"]
+              },
+              {
+                "group": "Cinematic Content",
+                "items": ["Cinematic Event", "Cinematic Travel", "Cinematic Commercial", "Storytelling Video"]
+              },
+              {
+                "group": "Documentary",
+                "items": ["Documentary Film", "Nature Documentary", "Social Documentary", "Company Documentary"]
+              },
+              {
+                "group": "Animation & Education",
+                "items": ["Motion Graphic", "Animation", "Explainer Video", "Educational Video", "Infographic Video"]
+              }
+            ]
+          },
+          "drone-aerial": {
+            "title": "Drone & Aerial",
+            "desc": "Pengambilan gambar dari udara menggunakan drone untuk kebutuhan sinematik, dokumentasi, pemetaan (mapping), hingga inspeksi.",
+            "columns": [
+              {
+                "group": "Drone Cinematic",
+                "items": ["Drone Aerial", "Drone FPV", "Cinematic FPV", "Indoor FPV", "Real Estate Drone"]
+              },
+              {
+                "group": "Drone Documentation",
+                "items": ["Event Drone", "Tourism Drone", "Construction Drone", "Industrial Drone"]
+              },
+              {
+                "group": "Mapping & Survey",
+                "items": ["Drone Mapping", "Orthophoto", "Topography", "Geomatics", "GIS Mapping", "Land Survey"]
+              },
+              {
+                "group": "Inspection & Monitoring",
+                "items": ["Progress Monitoring", "Infrastructure Inspection", "Tower Inspection", "Roof Inspection"]
+              }
+            ]
+          },
+          "outdoor-travel-nature": {
+            "title": "Outdoor, Travel & Nature",
+            "desc": "Dokumentasi petualangan outdoor, promosi pariwisata & perhotelan, keindahan alam (landscape), serta kehidupan alam liar.",
+            "columns": [
+              {
+                "group": "Outdoor Activity",
+                "items": ["Adventure", "Hiking", "Camping", "Offroad", "Touring"]
+              },
+              {
+                "group": "Travel & Tourism",
+                "items": ["Travel Documentation", "Tourism Promotion", "Destination Video", "Hotel & Resort", "Travel Photography"]
+              },
+              {
+                "group": "Nature",
+                "items": ["Landscape", "Mountain", "Beach", "Forest", "Waterfall", "Sunrise & Sunset"]
+              },
+              {
+                "group": "Wildlife",
+                "items": ["Animals", "Wildlife Photography", "Bird Photography"]
+              }
+            ]
+          },
+          "photography-art-style": {
+            "title": "Photography Art & Style",
+            "desc": "Karya seni fotografi dalam berbagai aliran seperti street photography, fine art, portrait, fashion photoshoot, hingga arsitektur.",
+            "columns": [
+              {
+                "group": "Photography Style",
+                "items": ["Street Photography", "Fine Art Photography", "Portrait Photography", "Editorial Photography", "Black & White Photography"]
+              },
+              {
+                "group": "Creative Photography",
+                "items": ["Long Exposure", "Light Painting", "Macro Photography", "Astrophotography", "Experimental Photography"]
+              },
+              {
+                "group": "Fashion & Model",
+                "items": ["Fashion Photography", "Model Photoshoot", "Beauty Shoot", "Studio Photography", "Lookbook"]
+              },
+              {
+                "group": "Architecture & Interior",
+                "items": ["Architecture Photography", "Interior Photography", "Real Estate Photography", "Property Photography"]
+              }
+            ]
+          },
+          "multimedia-production-service": {
+            "title": "Multimedia & Production Service",
+            "desc": "Layanan produksi live streaming event, jasa editing & color grading, penulisan naskah, serta manajemen konten digital.",
+            "columns": [
+              {
+                "group": "Livestreaming",
+                "items": ["Live Streaming", "Webinar Streaming", "Hybrid Event", "Virtual Event", "Multicam Production"]
+              },
+              {
+                "group": "Production Service",
+                "items": ["Video Editing", "Color Grading", "Audio Production", "Camera Operator", "Event Production", "LED Videotron"]
+              },
+              {
+                "group": "Creative Service",
+                "items": ["Scriptwriting", "Creative Concept", "Storyboard", "Production Team", "Content Planning"]
+              },
+              {
+                "group": "Digital Production",
+                "items": ["YouTube Production", "Social Media Management", "Content Management", "Branding Content"]
+              }
+            ]
+          },
+          "lainnya": {
+            "title": "Lainnya",
+            "desc": "Kategori alternatif untuk bidang kreatif khusus yang tidak tercantum dalam 10 kategori utama.",
+            "columns": [
+              {
+                "group": "Bidang Niche",
+                "items": ["Konsultasi Kreatif", "Penerjemahan Bahasa", "Asisten Virtual Kreatif", "Pengeditan Naskah", "Layanan Khusus Lainnya"]
+              }
+            ]
+          }
+        };
+
+        const type = '<?php echo esc_js($type); ?>';
+        const inputId = '<?php echo esc_js($input_id); ?>';
+        const detailBox = $('#lx-cat-detail-box-' + type);
+        const titleEl = $('#lx-cat-title-' + type);
+        const descEl = $('#lx-cat-desc-' + type);
+        const colsEl = $('#lx-cat-columns-' + type);
+
+        // Click handler for category sub-navbar
+        $('.lx-cat-nav button').on('click', function() {
+            const btn = $(this);
+            const parent = btn.closest('.lx-cat-nav');
+            
+            // Toggle active button
+            parent.find('.lx-cat-btn').removeClass('active');
+            btn.addClass('active');
+
+            const slug = btn.data('slug');
+            $('#' + inputId).val(slug);
+
+            // Update detail box content dynamically
+            const data = categoriesData[slug];
+            if (data && slug !== 'semua') {
+                titleEl.text(data.title);
+                descEl.text(data.desc);
+                
+                // Build columns HTML
+                let colsHtml = '';
+                data.columns.forEach(col => {
+                    colsHtml += `<div class="lx-cat-group">`;
+                    colsHtml += `<div class="lx-cat-group-name">${col.group}</div>`;
+                    colsHtml += `<ul class="lx-cat-group-list">`;
+                    col.items.forEach(item => {
+                        colsHtml += `<li>${item}</li>`;
+                    });
+                    colsHtml += `</ul>`;
+                    colsHtml += `</div>`;
+                });
+                colsEl.html(colsHtml);
+                
+                // Fade in detail box
+                detailBox.slideDown(350);
+            } else {
+                detailBox.slideUp(300);
+            }
+
+            // Trigger grid update
+            if (type === 'video') {
+                if (typeof window.jalankanCariVideo === 'function') {
+                    window.jalankanCariVideo(false);
+                } else if (typeof jalankanCariVideo === 'function') {
+                    jalankanCariVideo(false);
+                }
+            } else {
+                if (typeof window.getPorto === 'function') {
+                    window.getPorto(true);
+                } else if (typeof getPorto === 'function') {
+                    getPorto(true);
+                }
+            }
+        });
+    });
+    </script>
+    <?php
+}
