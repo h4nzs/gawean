@@ -697,7 +697,11 @@ jQuery(document).ready(function($) {
     line-height: 32px;
 }
 .select2-container--default .select2-selection--multiple .select2-search--inline {
-    min-width: 90%;
+    display: none;
+}
+.select2-container--default.select2-container--open .select2-selection--multiple .select2-search--inline,
+.select2-container--default .select2-selection--multiple:has(.select2-selection__choice) .select2-search--inline {
+    display: inline-block;
 }
 .form-row {
     overflow: visible !important;
@@ -733,7 +737,6 @@ jQuery(document).ready(function($) {
         $kota.select2({
             placeholder: "Pilih maksimal 3 Kota/Kabupaten",
             maximumSelectionLength: 3,
-            minimumResultsForSearch: -1,
             width: '100%'
         });
 
@@ -3587,7 +3590,11 @@ function render_personel_edit_profil($personel, $message = '') {
     line-height: 32px;
 }
 .select2-container--default .select2-selection--multiple .select2-search--inline {
-    min-width: 90%;
+    display: none;
+}
+.select2-container--default.select2-container--open .select2-selection--multiple .select2-search--inline,
+.select2-container--default .select2-selection--multiple:has(.select2-selection__choice) .select2-search--inline {
+    display: inline-block;
 }
 .form-row {
     overflow: visible !important;
@@ -3619,7 +3626,6 @@ jQuery(document).ready(function($) {
         $kota.select2({
             placeholder: "Pilih maksimal 3 Kota/Kabupaten",
             maximumSelectionLength: 3,
-            minimumResultsForSearch: -1,
             width: '100%'
         });
 
@@ -3687,7 +3693,6 @@ jQuery(document).ready(function($) {
         $('#edit_domisili_kota_2').select2({
             placeholder: "Pilih maksimal 3 Kota/Kabupaten",
             maximumSelectionLength: 3,
-            minimumResultsForSearch: -1,
             width: '100%'
         });
         $.getJSON(ajaxUrl, { action: 'fetch_wilayah', type: 'provinces' })
