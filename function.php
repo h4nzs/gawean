@@ -8252,14 +8252,10 @@ function render_portfolio_category_filter_bar($type = 'foto') {
         }
         .lx-cat-nav {
             display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
             gap: 10px;
-            overflow-x: auto;
             padding: 5px;
-            scrollbar-width: none; /* Hide scrollbar for Firefox */
-            -ms-overflow-style: none; /* Hide scrollbar for IE/Edge */
-        }
-        .lx-cat-nav::-webkit-scrollbar {
-            display: none; /* Hide scrollbar for Chrome/Safari */
         }
         .lx-cat-btn {
             background: #151515;
@@ -8285,10 +8281,10 @@ function render_portfolio_category_filter_bar($type = 'foto') {
             box-shadow: 0 4px 15px rgba(212, 175, 55, 0.35);
         }
         
-        @media (min-width: 992px) {
-            .lx-cat-nav {
-                flex-wrap: wrap;
-                justify-content: center;
+        @media (max-width: 768px) {
+            .lx-cat-btn {
+                padding: 8px 14px;
+                font-size: 12px;
             }
         }
 
