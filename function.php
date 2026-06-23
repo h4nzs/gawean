@@ -7797,8 +7797,8 @@ function render_portfolio_category_selection($porto_id = 0, $type = 'foto') {
             margin-top: 10px;
         }
         .porto-cat-item {
-            display: flex;
-            align-items: flex-start;
+            display: grid;
+            grid-template-columns: auto 200px 1fr;
             background: #1a1a1a;
             border-radius: 6px;
             border: 1px solid #333;
@@ -7811,14 +7811,12 @@ function render_portfolio_category_selection($porto_id = 0, $type = 'foto') {
             background: #222;
         }
         .porto-cat-item input[type="checkbox"] {
-            flex-shrink: 0;
-            margin: 0 0 0 14px;
+            align-self: start;
+            margin: 12px 0 0 14px;
             accent-color: #d4af37;
             cursor: pointer;
         }
         .porto-cat-name {
-            flex-shrink: 0;
-            width: 200px;
             padding: 10px 14px;
             font-size: 14px;
             color: #eee;
@@ -7827,8 +7825,7 @@ function render_portfolio_category_selection($porto_id = 0, $type = 'foto') {
             border-right: 1px solid #333;
         }
         .porto-cat-desc {
-            flex: 1;
-            padding: 10px 14px 10px 20px;
+            padding: 10px 14px;
             font-size: 12px;
             color: #999;
             line-height: 1.5;
@@ -7849,21 +7846,19 @@ function render_portfolio_category_selection($porto_id = 0, $type = 'foto') {
         }
         @media (max-width: 640px) {
             .porto-cat-item {
-                flex-wrap: wrap;
+                grid-template-columns: auto 1fr;
             }
             .porto-cat-item input[type="checkbox"] {
-                margin: 8px 0 8px 14px;
+                margin: 10px 0 0 14px;
+                grid-row: span 2;
             }
             .porto-cat-name {
-                width: auto;
-                flex: 1;
                 border-right: none;
-                padding: 8px 14px 8px 8px;
+                padding: 8px 14px 4px 8px;
             }
             .porto-cat-desc {
-                width: 100%;
-                flex: none;
-                padding: 0 14px 8px 38px;
+                grid-column: 2;
+                padding: 0 14px 8px 8px;
             }
         }
     </style>
