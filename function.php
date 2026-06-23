@@ -338,21 +338,42 @@ function personel_register_form() {
 
                 <div class="form-row">
                     <div class="form-group full" style="margin-bottom: 20px;">
-                        <label>Domisili Provinsi <span class="required">*</span></label>
-                        <select name="provinsi" id="domisili_provinsi" class="lx-select2" required style="width:100%;">
+                        <label>Domisili Provinsi 1 <span class="required">*</span></label>
+                        <select name="provinsi_1" id="domisili_provinsi_1" class="lx-select2" required style="width:100%;">
                             <option value="">Memuat data provinsi...</option>
                         </select>
-                        <input type="hidden" name="nama_provinsi" id="nama_provinsi">
+                        <input type="hidden" name="nama_provinsi_1" id="nama_provinsi_1">
                     </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group full">
-                        <label>Kota/Kabupaten <span class="required">*</span> (Maksimal 3)</label>
-                        <select name="kota_kabupaten[]" id="domisili_kota" class="lx-select2-multi" multiple="multiple" required style="width:100%;">
+                        <label>Kota/Kabupaten 1 <span class="required">*</span> (Maksimal 3)</label>
+                        <select name="kota_kabupaten_1[]" id="domisili_kota_1" class="lx-select2-multi" multiple="multiple" required style="width:100%;">
                             <option value="">Pilih provinsi terlebih dahulu</option>
                         </select>
                     </div>
                 </div>
+
+                <div id="domisili_provinsi_2_wrap" style="display:none;">
+                    <div class="form-row">
+                        <div class="form-group full" style="margin-bottom: 20px;">
+                            <label>Domisili Provinsi 2 (Opsional)</label>
+                            <select name="provinsi_2" id="domisili_provinsi_2" class="lx-select2" style="width:100%;">
+                                <option value="">Pilih Provinsi</option>
+                            </select>
+                            <input type="hidden" name="nama_provinsi_2" id="nama_provinsi_2">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group full">
+                            <label>Kota/Kabupaten 2 (Maksimal 3)</label>
+                            <select name="kota_kabupaten_2[]" id="domisili_kota_2" class="lx-select2-multi" multiple="multiple" style="width:100%;">
+                                <option value="">Pilih provinsi terlebih dahulu</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <button type="button" id="btn-tambah-provinsi" class="btn-tambah-provinsi" style="margin-bottom:15px;">+ Tambah Provinsi Lain</button>
 				<h2>
 					Data Pekerjaan
 				</h2>
@@ -671,62 +692,89 @@ jQuery(document).ready(function($) {
     color: #000 !important;
     margin-right: 5px;
 }
+.form-row {
+    overflow: visible !important;
+}
+.form-group.full {
+    overflow: visible !important;
+}
+.btn-tambah-provinsi {
+    background: transparent;
+    color: #d4af37;
+    border: 1px dashed #d4af37;
+    cursor: pointer;
+    padding: 6px 14px;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+.btn-tambah-provinsi:hover {
+    background: rgba(212, 175, 55, 0.1);
+}
 </style>
 
 <script>
 jQuery(document).ready(function($) {
-    $('#domisili_provinsi').select2({
-        placeholder: "Pilih Provinsi"
-    });
-    
-    $('#domisili_kota').select2({
-        placeholder: "Pilih maksimal 3 Kota/Kabupaten",
-        maximumSelectionLength: 3
-    });
+    function initProvKota(provSelector, kotaSelector, hiddenSelector, ajaxUrl, isRequired) {
+        var $prov = $(provSelector);
+        var $kota = $(kotaSelector);
+        var $hidden = $(hiddenSelector);
+
+        var opts = { placeholder: "Pilih Provinsi", width: '100%' };
+        if (!isRequired) opts.allowClear = true;
+        $prov.select2(opts);
+
+        $kota.select2({
+            placeholder: "Pilih maksimal 3 Kota/Kabupaten",
+            maximumSelectionLength: 3,
+            width: '100%'
+        });
+
+        $prov.on('change', function() {
+            var provId = $(this).val();
+            var provName = $(this).find(':selected').data('name');
+            $hidden.val(provName || '');
+
+            $kota.html('<option value="">Memuat data kota...</option>').prop('disabled', true);
+
+            if (provId) {
+                $.getJSON(ajaxUrl, { action: 'fetch_wilayah', type: 'regencies', prov_id: provId })
+                    .done(function(regencies) {
+                        var options = '';
+                        regencies.forEach(function(reg) {
+                            options += '<option value="' + reg.name + '">' + reg.name + '</option>';
+                        });
+                        $kota.html(options).prop('disabled', false).trigger('change');
+                    })
+                    .fail(function() {
+                        $kota.html('<option value="">Gagal memuat data</option>').prop('disabled', false);
+                    });
+            } else {
+                $kota.html('<option value="">Pilih provinsi terlebih dahulu</option>').prop('disabled', true);
+            }
+        });
+    }
 
     var ajaxUrl = '<?php echo admin_url('admin-ajax.php'); ?>';
+    var $prov1 = $('#domisili_provinsi_1');
+
+    initProvKota('#domisili_provinsi_1', '#domisili_kota_1', '#nama_provinsi_1', ajaxUrl, true);
+    initProvKota('#domisili_provinsi_2', '#domisili_kota_2', '#nama_provinsi_2', ajaxUrl, false);
 
     $.getJSON(ajaxUrl, { action: 'fetch_wilayah', type: 'provinces' })
         .done(function(provinces) {
-            let options = '<option value="">Pilih Provinsi</option>';
-            provinces.forEach(prov => {
-                options += `<option value="${prov.id}" data-name="${prov.name}">${prov.name}</option>`;
+            var options = '<option value="">Pilih Provinsi</option>';
+            provinces.forEach(function(prov) {
+                options += '<option value="' + prov.id + '" data-name="' + prov.name + '">' + prov.name + '</option>';
             });
-            $('#domisili_provinsi').html(options).trigger('change');
+            $('#domisili_provinsi_1, #domisili_provinsi_2').html(options).trigger('change');
         })
         .fail(function() {
-            console.error('Gagal memuat data provinsi');
-            $('#domisili_provinsi').html('<option value="">Gagal memuat data</option>');
+            $('#domisili_provinsi_1, #domisili_provinsi_2').html('<option value="">Gagal memuat data</option>');
         });
 
-    $('#domisili_provinsi').on('change', function() {
-        let provId = $(this).val();
-        let provName = $(this).find(':selected').data('name');
-        
-        if(provName) {
-            $('#nama_provinsi').val(provName);
-        } else {
-            $('#nama_provinsi').val('');
-        }
-
-        $('#domisili_kota').html('<option value="">Memuat data kota...</option>').prop('disabled', true);
-
-        if (provId) {
-            $.getJSON(ajaxUrl, { action: 'fetch_wilayah', type: 'regencies', prov_id: provId })
-                .done(function(regencies) {
-                    let options = '';
-                    regencies.forEach(reg => {
-                        options += `<option value="${reg.name}">${reg.name}</option>`;
-                    });
-                    $('#domisili_kota').html(options).prop('disabled', false).trigger('change');
-                })
-                .fail(function() {
-                    console.error('Gagal memuat data kota');
-                    $('#domisili_kota').html('<option value="">Gagal memuat data</option>').prop('disabled', false);
-                });
-        } else {
-             $('#domisili_kota').html('<option value="">Pilih provinsi terlebih dahulu</option>').prop('disabled', true);
-        }
+    $('#btn-tambah-provinsi').on('click', function() {
+        $('#domisili_provinsi_2_wrap').slideDown();
+        $(this).hide();
     });
 });
 </script>
@@ -832,6 +880,15 @@ $sertifikat_json = json_encode($sertifikat_urls);
 	// Tangkap data dari form
 	$tanggal_lahir = isset($_POST['tanggal_lahir']) ? sanitize_text_field($_POST['tanggal_lahir']) : '';
 
+	$domisili_parts = [];
+	for ($i = 1; $i <= 2; $i++) {
+	    $prov = $_POST["nama_provinsi_$i"] ?? '';
+	    $kota = isset($_POST["kota_kabupaten_$i"]) ? array_filter(array_map('sanitize_text_field', $_POST["kota_kabupaten_$i"])) : [];
+	    if (!empty($prov) && !empty($kota)) {
+	        $domisili_parts[] = sanitize_text_field($prov) . ' - ' . implode(', ', $kota);
+	    }
+	}
+	$domisili_value = implode(' || ', $domisili_parts);
 
 	// Masukkan ke dalam $wpdb->insert atau $wpdb->update
 	// 'porto_links' => $porto_links_json,
@@ -845,7 +902,7 @@ $nama_depan = strtok($nama_panggilan, ' ');
         'nama_panggilan' => $nama_depan,
         'no_hp' => sanitize_text_field($_POST['no_hp']),
         'tanggal_lahir' => $tanggal_lahir,
-        'domisili' => !empty($_POST['nama_provinsi']) && !empty($_POST['kota_kabupaten']) ? sanitize_text_field($_POST['nama_provinsi']) . ' - ' . implode(', ', array_map('sanitize_text_field', $_POST['kota_kabupaten'])) : '',
+        'domisili' => $domisili_value,
         'posisi' => implode(',', array_unique($posisi_array)), // F,D,E
         'cv_url' => $cv_url,
         'sertifikat_multiple' => $sertifikat_json,
@@ -2320,10 +2377,15 @@ $new_full_kode = $number_part . '-' . $new_suffix;
     // Ambil maksimal 5 saja
     $final_links = array_slice($clean_links, 0, 5);
 		$domisili_lama = $wpdb->get_var($wpdb->prepare("SELECT domisili FROM $table_name WHERE id = %d", $personel_id));
-		$kota_baru = isset($_POST['kota_kabupaten']) ? array_filter(array_map('sanitize_text_field', $_POST['kota_kabupaten'])) : [];
-		$domisili_baru = !empty($_POST['nama_provinsi']) && !empty($kota_baru)
-		    ? sanitize_text_field($_POST['nama_provinsi']) . ' - ' . implode(', ', $kota_baru)
-		    : $domisili_lama;
+		$domisili_parts = [];
+		for ($i = 1; $i <= 2; $i++) {
+		    $prov = $_POST["nama_provinsi_$i"] ?? '';
+		    $kota = isset($_POST["kota_kabupaten_$i"]) ? array_filter(array_map('sanitize_text_field', $_POST["kota_kabupaten_$i"])) : [];
+		    if (!empty($prov) && !empty($kota)) {
+		        $domisili_parts[] = sanitize_text_field($prov) . ' - ' . implode(', ', $kota);
+		    }
+		}
+		$domisili_baru = !empty($domisili_parts) ? implode(' || ', $domisili_parts) : $domisili_lama;
 		$tanggal_lahir = isset($_POST['tanggal_lahir']) ? sanitize_text_field($_POST['tanggal_lahir']) : '';	
         // 1. Siapkan Data Dasar
         $data_update = [
@@ -3127,21 +3189,36 @@ function render_personel_edit_profil($personel, $message = '') {
     $posisi_saved = !empty($personel->posisi) ? explode(',', $personel->posisi) : [];
 
     // Parse domisili: handle semua format
-    $dom_prov = '';
-    $dom_kota_list = [];
+    $dom_prov_1 = '';
+    $dom_kota_1 = [];
+    $dom_prov_2 = '';
+    $dom_kota_2 = [];
     if (!empty($personel->domisili)) {
-        $parts = explode(' - ', $personel->domisili);
-        if (count($parts) >= 2) {
-            $dom_prov = trim($parts[0]);
-            $kota_str = trim($parts[1]);
-            if (!empty($kota_str)) {
-                $dom_kota_list = explode(', ', $kota_str);
-            }
-        } else {
-            $old_parts = explode(', ', $personel->domisili, 2);
-            if (count($old_parts) === 2) {
-                $dom_kota_list = [trim($old_parts[0])];
-                $dom_prov = trim($old_parts[1]);
+        $blok_prov = explode(' || ', $personel->domisili);
+        foreach ($blok_prov as $idx => $blok) {
+            $parts = explode(' - ', $blok);
+            if (count($parts) >= 2) {
+                $prov = trim($parts[0]);
+                $kota_str = trim($parts[1]);
+                $kota = !empty($kota_str) ? explode(', ', $kota_str) : [];
+                if ($idx === 0) {
+                    $dom_prov_1 = $prov;
+                    $dom_kota_1 = $kota;
+                } elseif ($idx === 1) {
+                    $dom_prov_2 = $prov;
+                    $dom_kota_2 = $kota;
+                }
+            } else {
+                $old_parts = explode(', ', $blok, 2);
+                if (count($old_parts) === 2) {
+                    if ($idx === 0) {
+                        $dom_kota_1 = [trim($old_parts[0])];
+                        $dom_prov_1 = trim($old_parts[1]);
+                    } elseif ($idx === 1) {
+                        $dom_kota_2 = [trim($old_parts[0])];
+                        $dom_prov_2 = trim($old_parts[1]);
+                    }
+                }
             }
         }
     }
@@ -3204,23 +3281,48 @@ function render_personel_edit_profil($personel, $message = '') {
 
             <div class="form-row">
                 <div class="form-group full" style="margin-bottom: 20px;">
-                    <label>Domisili Provinsi <span class="required">*</span></label>
-                    <select name="provinsi" id="edit_domisili_provinsi" class="lx-select2" style="width:100%;">
+                    <label>Domisili Provinsi 1 <span class="required">*</span></label>
+                    <select name="provinsi_1" id="edit_domisili_provinsi_1" class="lx-select2" style="width:100%;">
                         <option value="">Pilih Provinsi</option>
                     </select>
-                    <input type="hidden" name="nama_provinsi" id="edit_nama_provinsi" value="<?php echo esc_attr($dom_prov); ?>">
+                    <input type="hidden" name="nama_provinsi_1" id="edit_nama_provinsi_1" value="<?php echo esc_attr($dom_prov_1); ?>">
                 </div>
             </div>
             <div class="form-row">
                 <div class="form-group full">
-                    <label>Kota/Kabupaten <span class="required">*</span> (Maksimal 3)</label>
-                    <select name="kota_kabupaten[]" id="edit_domisili_kota" class="lx-select2-multi" multiple="multiple" style="width:100%;">
-                        <?php foreach ($dom_kota_list as $kt): ?>
+                    <label>Kota/Kabupaten 1 <span class="required">*</span> (Maksimal 3)</label>
+                    <select name="kota_kabupaten_1[]" id="edit_domisili_kota_1" class="lx-select2-multi" multiple="multiple" style="width:100%;">
+                        <?php foreach ($dom_kota_1 as $kt): ?>
                             <option value="<?php echo esc_attr(trim($kt)); ?>" selected><?php echo esc_html(trim($kt)); ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
             </div>
+
+            <div id="edit_domisili_provinsi_2_wrap" style="display:<?php echo $dom_prov_2 ? 'block' : 'none'; ?>;">
+                <div class="form-row">
+                    <div class="form-group full" style="margin-bottom: 20px;">
+                        <label>Domisili Provinsi 2 (Opsional)</label>
+                        <select name="provinsi_2" id="edit_domisili_provinsi_2" class="lx-select2" style="width:100%;">
+                            <option value="">Pilih Provinsi</option>
+                        </select>
+                        <input type="hidden" name="nama_provinsi_2" id="edit_nama_provinsi_2" value="<?php echo esc_attr($dom_prov_2); ?>">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group full">
+                        <label>Kota/Kabupaten 2 (Maksimal 3)</label>
+                        <select name="kota_kabupaten_2[]" id="edit_domisili_kota_2" class="lx-select2-multi" multiple="multiple" style="width:100%;">
+                            <?php foreach ($dom_kota_2 as $kt): ?>
+                                <option value="<?php echo esc_attr(trim($kt)); ?>" selected><?php echo esc_html(trim($kt)); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <?php if (empty($dom_prov_2)): ?>
+                <button type="button" id="btn-tambah-provinsi-edit" class="btn-tambah-provinsi" style="margin-bottom:15px;">+ Tambah Provinsi Lain</button>
+            <?php endif; ?>
 
             <h3 style="color:var(--gold); margin-top:30px;">💼 Data Pekerjaan</h3>
             <div class="form-group full">
@@ -3428,75 +3530,138 @@ function render_personel_edit_profil($personel, $message = '') {
     color: #000 !important;
     margin-right: 5px;
 }
+.form-row {
+    overflow: visible !important;
+}
+.form-group.full {
+    overflow: visible !important;
+}
+.btn-tambah-provinsi {
+    background: transparent;
+    color: #d4af37;
+    border: 1px dashed #d4af37;
+    cursor: pointer;
+    padding: 6px 14px;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+.btn-tambah-provinsi:hover {
+    background: rgba(212, 175, 55, 0.1);
+}
 </style>
 <script>
 jQuery(document).ready(function($) {
-    var savedProvinsi = $('#edit_nama_provinsi').val();
+    function initProvKotaEdit(provSelector, kotaSelector, hiddenSelector, ajaxUrl, savedProv, savedKota) {
+        var $prov = $(provSelector);
+        var $kota = $(kotaSelector);
+        var $hidden = $(hiddenSelector);
 
-    $('#edit_domisili_provinsi').select2({
-        placeholder: "Pilih Provinsi"
-    });
-    
-    $('#edit_domisili_kota').select2({
-        placeholder: "Pilih maksimal 3 Kota/Kabupaten",
-        maximumSelectionLength: 3
-    });
-
-    var ajaxUrl = '<?php echo admin_url('admin-ajax.php'); ?>';
-
-    $.getJSON(ajaxUrl, { action: 'fetch_wilayah', type: 'provinces' })
-        .done(function(provinces) {
-            let options = '<option value="">Pilih Provinsi</option>';
-            provinces.forEach(prov => {
-                var selected = (prov.name === savedProvinsi) ? 'selected' : '';
-                options += `<option value="${prov.id}" data-name="${prov.name}" ${selected}>${prov.name}</option>`;
-            });
-            $('#edit_domisili_provinsi').html(options).trigger('change');
-            
-            if (savedProvinsi) {
-                var provId = $('#edit_domisili_provinsi').val();
-                if (provId) {
-                    loadKotaEdit(provId);
-                }
-            }
-        })
-        .fail(function() {
-            console.error('Gagal memuat data provinsi');
+        $prov.select2({ placeholder: "Pilih Provinsi", width: '100%' });
+        $kota.select2({
+            placeholder: "Pilih maksimal 3 Kota/Kabupaten",
+            maximumSelectionLength: 3,
+            width: '100%'
         });
 
-    function loadKotaEdit(provId) {
-        $.getJSON(ajaxUrl, { action: 'fetch_wilayah', type: 'regencies', prov_id: provId })
-            .done(function(regencies) {
-                var savedKota = $('#edit_domisili_kota').val() || [];
-                let options = '';
-                regencies.forEach(reg => {
-                    var selected = savedKota.includes(reg.name) ? 'selected' : '';
-                    options += `<option value="${reg.name}" ${selected}>${reg.name}</option>`;
+        function loadKota(provId) {
+            $.getJSON(ajaxUrl, { action: 'fetch_wilayah', type: 'regencies', prov_id: provId })
+                .done(function(regencies) {
+                    var options = '';
+                    regencies.forEach(function(reg) {
+                        var selected = (savedKota.indexOf(reg.name) !== -1) ? 'selected' : '';
+                        options += '<option value="' + reg.name + '" ' + selected + '>' + reg.name + '</option>';
+                    });
+                    $kota.html(options).prop('disabled', false).trigger('change');
+                })
+                .fail(function() {
+                    $kota.html('<option value="">Gagal memuat data</option>').prop('disabled', false);
                 });
-                $('#edit_domisili_kota').html(options).prop('disabled', false).trigger('change');
+        }
+
+        $.getJSON(ajaxUrl, { action: 'fetch_wilayah', type: 'provinces' })
+            .done(function(provinces) {
+                var options = '<option value="">Pilih Provinsi</option>';
+                var matchedId = null;
+                provinces.forEach(function(prov) {
+                    var selected = (prov.name === savedProv) ? 'selected' : '';
+                    if (selected) matchedId = prov.id;
+                    options += '<option value="' + prov.id + '" data-name="' + prov.name + '" ' + selected + '>' + prov.name + '</option>';
+                });
+                $prov.html(options).trigger('change');
+                if (matchedId && savedKota.length) {
+                    loadKota(matchedId);
+                }
             })
             .fail(function() {
-                console.error('Gagal memuat data kota');
+                $prov.html('<option value="">Gagal memuat data</option>');
             });
+
+        $prov.on('change', function() {
+            var provId = $(this).val();
+            var provName = $(this).find(':selected').data('name');
+            $hidden.val(provName || '');
+            savedKota = [];
+            $kota.html('<option value="">Memuat data kota...</option>').prop('disabled', true);
+            if (provId) loadKota(provId);
+            else $kota.html('<option value="">Pilih provinsi terlebih dahulu</option>').prop('disabled', true);
+        });
     }
 
-    $('#edit_domisili_provinsi').on('change', function() {
-        let provId = $(this).val();
-        let provName = $(this).find(':selected').data('name');
-        
-        if(provName) {
-            $('#edit_nama_provinsi').val(provName);
-        } else {
-            $('#edit_nama_provinsi').val('');
-        }
+    var ajaxUrl = '<?php echo admin_url('admin-ajax.php'); ?>';
+    var savedProv1 = $('#edit_nama_provinsi_1').val();
+    var savedKota1 = [];
+    <?php foreach ($dom_kota_1 as $kt): ?>
+    savedKota1.push('<?php echo esc_js(trim($kt)); ?>');
+    <?php endforeach; ?>
+    initProvKotaEdit('#edit_domisili_provinsi_1', '#edit_domisili_kota_1', '#edit_nama_provinsi_1', ajaxUrl, savedProv1, savedKota1);
 
-        $('#edit_domisili_kota').html('<option value="">Memuat data kota...</option>').prop('disabled', true);
+    var savedProv2 = $('#edit_nama_provinsi_2').val();
+    var savedKota2 = [];
+    <?php foreach ($dom_kota_2 as $kt): ?>
+    savedKota2.push('<?php echo esc_js(trim($kt)); ?>');
+    <?php endforeach; ?>
+    if (savedProv2) {
+        initProvKotaEdit('#edit_domisili_provinsi_2', '#edit_domisili_kota_2', '#edit_nama_provinsi_2', ajaxUrl, savedProv2, savedKota2);
+    } else {
+        $('#edit_domisili_provinsi_2').select2({ placeholder: "Pilih Provinsi", width: '100%' });
+        $('#edit_domisili_kota_2').select2({
+            placeholder: "Pilih maksimal 3 Kota/Kabupaten",
+            maximumSelectionLength: 3,
+            width: '100%'
+        });
+        $.getJSON(ajaxUrl, { action: 'fetch_wilayah', type: 'provinces' })
+            .done(function(provinces) {
+                var options = '<option value="">Pilih Provinsi</option>';
+                provinces.forEach(function(prov) {
+                    options += '<option value="' + prov.id + '" data-name="' + prov.name + '">' + prov.name + '</option>';
+                });
+                $('#edit_domisili_provinsi_2').html(options).trigger('change');
+            });
+        $('#edit_domisili_provinsi_2').on('change', function() {
+            var provId = $(this).val();
+            var provName = $(this).find(':selected').data('name');
+            $('#edit_nama_provinsi_2').val(provName || '');
+            $('#edit_domisili_kota_2').html('<option value="">Memuat data kota...</option>').prop('disabled', true);
+            if (provId) {
+                $.getJSON(ajaxUrl, { action: 'fetch_wilayah', type: 'regencies', prov_id: provId })
+                    .done(function(regencies) {
+                        var options = '';
+                        regencies.forEach(function(reg) {
+                            options += '<option value="' + reg.name + '">' + reg.name + '</option>';
+                        });
+                        $('#edit_domisili_kota_2').html(options).prop('disabled', false).trigger('change');
+                    })
+                    .fail(function() {
+                        $('#edit_domisili_kota_2').html('<option value="">Gagal memuat data</option>').prop('disabled', false);
+                    });
+            }
+        });
+    }
 
-        if (provId) {
-            loadKotaEdit(provId);
-        } else {
-            $('#edit_domisili_kota').html('<option value="">Pilih provinsi terlebih dahulu</option>').prop('disabled', true);
-        }
+    $('#btn-tambah-provinsi-edit').on('click', function() {
+        $('#edit_domisili_provinsi_2_wrap').slideDown();
+        $(this).hide();
+        $('#edit_domisili_provinsi_2').trigger('change');
     });
 });
 </script>
@@ -4474,7 +4639,7 @@ if ($filter_price) {
     $query .= $wpdb->prepare(" AND p.pricelist_perhari = %s", $filter_price);
 }
 if ($filter_provinsi) {
-    $query .= $wpdb->prepare(" AND p.domisili LIKE %s", $filter_provinsi . ' - %');
+    $query .= $wpdb->prepare(" AND p.domisili LIKE %s", '%' . $filter_provinsi . ' - %');
 }
 if ($filter_kota) {
     $query .= $wpdb->prepare(" AND p.domisili LIKE %s", '%' . $filter_kota . '%');
