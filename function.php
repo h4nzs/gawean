@@ -897,7 +897,7 @@ $sertifikat_json = json_encode($sertifikat_urls);
 	$domisili_parts = [];
 	for ($i = 1; $i <= 2; $i++) {
 	    $prov = $_POST["nama_provinsi_$i"] ?? '';
-	    $kota = isset($_POST["kota_kabupaten_$i"]) ? array_filter(array_map('sanitize_text_field', $_POST["kota_kabupaten_$i"])) : [];
+	    $kota = isset($_POST["kota_kabupaten_$i"]) ? array_filter(array_map('sanitize_text_field', (array)$_POST["kota_kabupaten_$i"])) : [];
 	    if (!empty($prov) && !empty($kota)) {
 	        $domisili_parts[] = sanitize_text_field($prov) . ' - ' . implode(', ', $kota);
 	    }
@@ -1016,8 +1016,10 @@ if ($result) {
     exit;
 } else {
     // Error balik ke form
+    $db_error = $wpdb->last_error ?: 'unknown error';
+    error_log('Personel registration FAILED: ' . $db_error . ' | DATA: ' . print_r($data, true));
     wp_redirect(add_query_arg([
-        'message' => urlencode('❌ Gagal menyimpan data. Hubungi admin.'),
+        'message' => urlencode('❌ Gagal: ' . $db_error),
         'success' => '0'
     ], wp_get_referer()));
     exit;
@@ -2438,7 +2440,7 @@ $new_full_kode = $number_part . '-' . $new_suffix;
 		$domisili_parts = [];
 		for ($i = 1; $i <= 2; $i++) {
 		    $prov = $_POST["nama_provinsi_$i"] ?? '';
-		    $kota = isset($_POST["kota_kabupaten_$i"]) ? array_filter(array_map('sanitize_text_field', $_POST["kota_kabupaten_$i"])) : [];
+		    $kota = isset($_POST["kota_kabupaten_$i"]) ? array_filter(array_map('sanitize_text_field', (array)$_POST["kota_kabupaten_$i"])) : [];
 		    if (!empty($prov) && !empty($kota)) {
 		        $domisili_parts[] = sanitize_text_field($prov) . ' - ' . implode(', ', $kota);
 		    }
@@ -5659,6 +5661,7 @@ jQuery(document).ready(function($) {
                         .prop('disabled', true);
 
                 }
+			}
         });
     }
     window.getPorto = getPorto;
