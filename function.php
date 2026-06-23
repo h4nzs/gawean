@@ -4769,7 +4769,9 @@ function render_detail_personel_shortcode() {
 
 <?php if (intval($p->show_sosmed) !== 0): ?>
     <div class="lx-social-box" style="background:#0a0a0a; border:1px solid #333; border-radius:2px; margin-top:20px; padding:20px;">
+      
         <div class="lx-divider-text" style="margin-top:0; margin-bottom:25px;"><span>KONTAK & SOSMED</span></div>
+
         
         <?php if (!empty($p->no_hp)): ?>
             <p style="font-size:13px; color:#ccc; margin-bottom:10px;">
