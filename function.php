@@ -7798,7 +7798,7 @@ function render_portfolio_category_selection($porto_id = 0, $type = 'foto') {
         }
         .porto-cat-item {
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             background: #1a1a1a;
             border-radius: 6px;
             border: 1px solid #333;
@@ -7828,7 +7828,7 @@ function render_portfolio_category_selection($porto_id = 0, $type = 'foto') {
         }
         .porto-cat-desc {
             flex: 1;
-            padding: 10px 14px;
+            padding: 10px 14px 10px 20px;
             font-size: 12px;
             color: #999;
             line-height: 1.5;
