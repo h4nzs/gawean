@@ -1253,6 +1253,93 @@ function personel_admin_page() {
     echo '<div class="notice notice-success"><p>✅ Personel beserta seluruh portofolio foto dan videonya berhasil dihapus permanen!</p></div>';
 }
     }
+
+    // Handle draft actions (approve/reject profile modifications)
+    if (isset($_POST['draft_action']) && wp_verify_nonce($_POST['draft_nonce'] ?? '', 'personel_draft_action')) {
+        $personel_id = intval($_POST['personel_id']);
+        $draft_row = $wpdb->get_row($wpdb->prepare("SELECT * FROM wp9y_personel_draft_edit WHERE personel_id = %d", $personel_id));
+        
+        if ($draft_row) {
+            $draft_fields = json_decode($draft_row->draft_data, true);
+            
+            if ($_POST['draft_action'] == 'approve') {
+                // 1. Get current personnel record to find old files to delete
+                $personel = $wpdb->get_row($wpdb->prepare("SELECT * FROM wp9y_personel WHERE id = %d", $personel_id));
+                
+                if ($personel) {
+                    // 2. Delete old files replaced by the draft
+                    $file_keys = ['foto_profil', 'cv_url'];
+                    foreach ($file_keys as $key) {
+                        if (!empty($draft_fields[$key]) && $draft_fields[$key] !== $personel->$key && !empty($personel->$key)) {
+                            $file_path = str_replace(site_url('/'), ABSPATH, $personel->$key);
+                            if (file_exists($file_path)) {
+                                unlink($file_path);
+                            }
+                        }
+                    }
+                    
+                    // Handle old certificate images deletion
+                    if (!empty($draft_fields['sertifikat_multiple']) && $draft_fields['sertifikat_multiple'] !== $personel->sertifikat_multiple && !empty($personel->sertifikat_multiple)) {
+                        $old_certs = json_decode($personel->sertifikat_multiple, true) ?: [];
+                        $new_certs = json_decode($draft_fields['sertifikat_multiple'], true) ?: [];
+                        
+                        foreach ($old_certs as $cert_url) {
+                            if (!in_array($cert_url, $new_certs)) {
+                                $file_path = str_replace(site_url('/'), ABSPATH, $cert_url);
+                                if (file_exists($file_path)) {
+                                    unlink($file_path);
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // 3. Update main personnel record with draft fields
+                $wpdb->update('wp9y_personel', $draft_fields, ['id' => $personel_id]);
+                
+                // 4. Delete the draft row
+                $wpdb->delete('wp9y_personel_draft_edit', ['personel_id' => $personel_id]);
+                
+                echo '<div class="notice notice-success"><p>✅ Perubahan profil berhasil disetujui dan diperbarui!</p></div>';
+                
+            } elseif ($_POST['draft_action'] == 'reject') {
+                // Reject: delete new files uploaded in draft
+                $personel = $wpdb->get_row($wpdb->prepare("SELECT * FROM wp9y_personel WHERE id = %d", $personel_id));
+                
+                if ($personel) {
+                    $file_keys = ['foto_profil', 'cv_url'];
+                    foreach ($file_keys as $key) {
+                        if (!empty($draft_fields[$key]) && $draft_fields[$key] !== $personel->$key) {
+                            $file_path = str_replace(site_url('/'), ABSPATH, $draft_fields[$key]);
+                            if (file_exists($file_path)) {
+                                unlink($file_path);
+                            }
+                        }
+                    }
+                    
+                    // Handle certificate images deletion
+                    if (!empty($draft_fields['sertifikat_multiple']) && $draft_fields['sertifikat_multiple'] !== $personel->sertifikat_multiple) {
+                        $new_certs = json_decode($draft_fields['sertifikat_multiple'], true) ?: [];
+                        $old_certs = json_decode($personel->sertifikat_multiple, true) ?: [];
+                        
+                        foreach ($new_certs as $cert_url) {
+                            if (!in_array($cert_url, $old_certs)) {
+                                $file_path = str_replace(site_url('/'), ABSPATH, $cert_url);
+                                if (file_exists($file_path)) {
+                                    unlink($file_path);
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // Delete the draft row
+                $wpdb->delete('wp9y_personel_draft_edit', ['personel_id' => $personel_id]);
+                
+                echo '<div class="notice notice-warning"><p>❌ Perubahan profil ditolak dan berkas draft dibersihkan.</p></div>';
+            }
+        }
+    }
     
     if (isset($_GET['view'])) {
         personel_view_detail($_GET['view']);
@@ -1260,6 +1347,7 @@ function personel_admin_page() {
     }
     
     $personels = $wpdb->get_results("SELECT * FROM $table_name ORDER BY created_at DESC");
+    $pending_draft_ids = $wpdb->get_col("SELECT personel_id FROM wp9y_personel_draft_edit") ?: [];
     ?>
     <div class="wrap">
         <h1>👥 Data Personel</h1>
@@ -1295,6 +1383,9 @@ $nama_depan = strtok($p->nama_panggilan, ' ');
                 <span class="status-badge status-<?php echo $p->status; ?>">
                     <?php echo ucfirst($p->status); ?>
                 </span>
+                <?php if (in_array($p->id, $pending_draft_ids)): ?>
+                    <span style="display:block; margin-top:5px; background:#fff3cd; color:#856404; padding:2px 8px; border-radius:4px; font-size:10px; font-weight:bold; border:1px solid #ffeeba; text-align:center;">Pending Edit</span>
+                <?php endif; ?>
             </td>
             <td><?php echo date('d M Y', strtotime($p->created_at)); ?></td>
             <td style="text-align:center;">
@@ -1658,7 +1749,162 @@ function personel_view_detail($id) {
     ?>
     <div class="wrap">
         <h1>👤 Detail <?php echo esc_html($nama_depan); ?></h1>
-        <a href="?page=personel-admin" class="button button-secondary">&larr; Kembali</a>
+        <a href="?page=personel-admin" class="button button-secondary" style="margin-bottom:15px;">&larr; Kembali</a>
+        
+        <?php
+        $draft_row = $wpdb->get_row($wpdb->prepare("SELECT * FROM wp9y_personel_draft_edit WHERE personel_id = %d", $id));
+        if ($draft_row) {
+            $draft_fields = json_decode($draft_row->draft_data, true);
+            $diff = [];
+            $fields_to_compare = [
+                'nama_lengkap'      => 'Nama Lengkap',
+                'nama_panggilan'    => 'Nama Panggilan',
+                'no_hp'             => 'No HP',
+                'tanggal_lahir'     => 'Tanggal Lahir',
+                'domisili'          => 'Domisili',
+                'sertifikat'        => 'Sertifikat (Teks)',
+                'deskripsi'         => 'Deskripsi',
+                'peralatan'         => 'Peralatan',
+                'pricelist_perhari' => 'Pricelist Perhari',
+                'pricelist'         => 'Pricelist (HTML)',
+                'facebook'          => 'Facebook',
+                'instagram'         => 'Instagram',
+                'tiktok'            => 'Tiktok',
+                'thread'            => 'Thread',
+                'youtube'           => 'Youtube',
+                'tag'               => 'Tags',
+                'kode_nama'         => 'Kode Nama',
+                'posisi'            => 'Posisi',
+                'porto_links'       => 'Link Portofolio Eksternal',
+                'foto_profil'       => 'Foto Profil',
+                'cv_url'            => 'CV PDF',
+                'sertifikat_multiple'=> 'Sertifikat (Gambar)',
+            ];
+
+            foreach ($fields_to_compare as $key => $label) {
+                $old_val = isset($personel->$key) ? $personel->$key : '';
+                $new_val = isset($draft_fields[$key]) ? $draft_fields[$key] : '';
+                
+                if ($key === 'porto_links') {
+                    $old_arr = json_decode($old_val, true) ?: [];
+                    $new_arr = json_decode($new_val, true) ?: [];
+                    sort($old_arr);
+                    sort($new_arr);
+                    if ($old_arr !== $new_arr) {
+                        $diff[$key] = [
+                            'label' => $label,
+                            'old'   => implode('<br>', array_map('esc_url', $old_arr)),
+                            'new'   => implode('<br>', array_map('esc_url', $new_arr)),
+                        ];
+                    }
+                } elseif ($key === 'sertifikat_multiple') {
+                    $old_arr = json_decode($old_val, true) ?: [];
+                    $new_arr = json_decode($new_val, true) ?: [];
+                    sort($old_arr);
+                    sort($new_arr);
+                    if ($old_arr !== $new_arr) {
+                        $old_imgs = '';
+                        foreach ($old_arr as $img) {
+                            $old_imgs .= '<img src="'.esc_url($img).'" style="max-height:60px; margin-right:5px; border-radius:4px; border:1px solid #ddd;">';
+                        }
+                        $new_imgs = '';
+                        foreach ($new_arr as $img) {
+                            $new_imgs .= '<img src="'.esc_url($img).'" style="max-height:60px; margin-right:5px; border-radius:4px; border:1px solid #d4af37;">';
+                        }
+                        $diff[$key] = [
+                            'label' => $label,
+                            'old'   => $old_imgs ?: '-',
+                            'new'   => $new_imgs ?: '-',
+                        ];
+                    }
+                } elseif ($key === 'foto_profil') {
+                    if ($old_val !== $new_val) {
+                        $diff[$key] = [
+                            'label' => $label,
+                            'old'   => $old_val ? '<img src="'.esc_url($old_val).'" style="width:60px; height:60px; border-radius:50%; object-fit:cover; border:1px solid #ddd;">' : '-',
+                            'new'   => $new_val ? '<img src="'.esc_url($new_val).'" style="width:60px; height:60px; border-radius:50%; object-fit:cover; border:2px solid #00a32a;">' : '-',
+                        ];
+                    }
+                } elseif ($key === 'cv_url') {
+                    if ($old_val !== $new_val) {
+                        $diff[$key] = [
+                            'label' => $label,
+                            'old'   => $old_val ? '<a href="'.esc_url($old_val).'" target="_blank">Lihat CV Lama</a>' : '-',
+                            'new'   => $new_val ? '<a href="'.esc_url($new_val).'" target="_blank" style="color:#2271b1; font-weight:bold;">Lihat CV Baru</a>' : '-',
+                        ];
+                    }
+                } elseif ($key === 'posisi') {
+                    if ($old_val !== $new_val) {
+                        $old_pos = explode(',', $old_val);
+                        $new_pos = explode(',', $new_val);
+                        $old_pos_labels = array_map('personel_posisi_label', $old_pos);
+                        $new_pos_labels = array_map('personel_posisi_label', $new_pos);
+                        $diff[$key] = [
+                            'label' => $label,
+                            'old'   => implode(', ', $old_pos_labels),
+                            'new'   => implode(', ', $new_pos_labels),
+                        ];
+                    }
+                } else {
+                    if ($old_val !== $new_val) {
+                        $diff[$key] = [
+                            'label' => $label,
+                            'old'   => nl2br(esc_html($old_val)),
+                            'new'   => nl2br(esc_html($new_val)),
+                        ];
+                    }
+                }
+            }
+            
+            if (!empty($draft_fields['password'])) {
+                $diff['password'] = [
+                    'label' => 'Password',
+                    'old'   => '********',
+                    'new'   => '<span style="color:#d63638; font-weight:bold;">Password Diubah (Hashed)</span>',
+                ];
+            }
+
+            if (!empty($diff)): ?>
+                <div class="draft-review-box" style="background:#fff; border:1px solid #ccd0d4; border-left:4px solid #ffb900; padding:20px; border-radius:8px; margin:20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                    <h2 style="margin-top:0; color:#1d2327;">⚠️ Peninjauan Usulan Perubahan Profil</h2>
+                    <p style="color:#646970;">Personel ini mengajukan perubahan profil berikut. Selama peninjauan ini belum disetujui, profil aktif mereka di website tetap berjalan menggunakan data lama.</p>
+                    
+                    <table class="wp-list-table widefat fixed striped" style="margin:20px 0; border:1px solid #ccd0d4;">
+                        <thead>
+                            <tr>
+                                <th width="20%"><strong>Nama Kolom</strong></th>
+                                <th width="40%"><strong>Nilai Aktif Saat Ini</strong></th>
+                                <th width="40%"><strong>Nilai Usulan Baru</strong></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($diff as $item): ?>
+                                <tr>
+                                    <td><strong><?php echo esc_html($item['label']); ?></strong></td>
+                                    <td style="color:#646970;"><?php echo $item['old']; ?></td>
+                                    <td style="background:#f0f9ff; font-weight:500; color:#1d2327;"><?php echo $item['new']; ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                    
+                    <div class="action-buttons" style="display:flex; gap:15px; align-items:center;">
+                        <form method="post" style="display:inline;">
+                            <?php wp_nonce_field('personel_draft_action', 'draft_nonce'); ?>
+                            <input type="hidden" name="personel_id" value="<?php echo $id; ?>">
+                            <button type="submit" name="draft_action" value="approve" class="button button-large button-primary" style="background:#00a32a; border-color:#00a32a; color:#fff;">Setujui Perubahan</button>
+                        </form>
+                        
+                        <form method="post" style="display:inline;">
+                            <?php wp_nonce_field('personel_draft_action', 'draft_nonce'); ?>
+                            <input type="hidden" name="personel_id" value="<?php echo $id; ?>">
+                            <button type="submit" name="draft_action" value="reject" class="button button-large button-secondary" style="color:#d63638; border-color:#d63638; display:inline-flex; align-items:center;" onclick="return confirm('Tolak dan hapus usulan perubahan ini?')">Tolak Perubahan</button>
+                        </form>
+                    </div>
+                </div>
+            <?php endif;
+        }
+        ?>
         
         <div class="personel-detail-card">
             <div class="detail-header">
@@ -2488,33 +2734,33 @@ if (isset($_POST['update_profile_personel'])) {
     if (!isset($_POST['personel_update_nonce']) || !wp_verify_nonce($_POST['personel_update_nonce'], 'update_profile')) {
         $message = '<div class="notice-error">⚠️ Sesi keamanan kadaluarsa. Silahkan refresh dan coba lagi.</div>';
     } else {
-       
-$old_kode = $wpdb->get_var($wpdb->prepare("SELECT kode_nama FROM wp9y_personel WHERE id = %d", $personel_id));
+        $personel = $wpdb->get_row($wpdb->prepare("SELECT * FROM wp9y_personel WHERE id = %d", $personel_id));
+        
+        $old_kode = $personel->kode_nama;
 
-// 2. Pecah kode (Contoh: 0001-FDE)
-if (!empty($old_kode) && strpos($old_kode, '-') !== false) {
-    $parts = explode('-', $old_kode);
-    $number_part = $parts[0]; // Ini akan mengambil '0001'
-} else {
-    // Fallback jika format salah/data lama rusak, ambil 4 angka pertama atau beri default
-    $number_part = substr($old_kode, 0, 4) ?: '0000'; 
-}
+        // 2. Pecah kode (Contoh: 0001-FDE)
+        if (!empty($old_kode) && strpos($old_kode, '-') !== false) {
+            $parts = explode('-', $old_kode);
+            $number_part = $parts[0]; // Ini akan mengambil '0001'
+        } else {
+            $number_part = substr($old_kode, 0, 4) ?: '0000'; 
+        }
 
-// 3. Ambil posisi baru dari form
-$posisi_array = isset($_POST['posisi']) ? $_POST['posisi'] : [];
-$new_suffix = implode('', $posisi_array); // Gabungkan jadi "FDEA"
+        // 3. Ambil posisi baru dari form
+        $posisi_array = isset($_POST['posisi']) ? $_POST['posisi'] : [];
+        $new_suffix = implode('', $posisi_array); // Gabungkan jadi "FDEA"
 
-// 4. Gabungkan kembali
-$new_full_kode = $number_part . '-' . $new_suffix;
+        // 4. Gabungkan kembali
+        $new_full_kode = $number_part . '-' . $new_suffix;
 		
-		$porto_links = $_POST['porto_links'];
-    
-    // Bersihkan: hapus yang kosong, sanitize URL
-    $clean_links = array_filter(array_map('esc_url_raw', $porto_links));
-    
-    // Ambil maksimal 5 saja
-    $final_links = array_slice($clean_links, 0, 5);
-		$domisili_lama = $wpdb->get_var($wpdb->prepare("SELECT domisili FROM $table_name WHERE id = %d", $personel_id));
+		$porto_links = isset($_POST['porto_links']) ? $_POST['porto_links'] : [];
+        
+        // Bersihkan: hapus yang kosong, sanitize URL
+        $clean_links = array_filter(array_map('esc_url_raw', $porto_links));
+        
+        // Ambil maksimal 5 saja
+        $final_links = array_slice($clean_links, 0, 5);
+		$domisili_lama = $personel->domisili;
 		$domisili_parts = [];
 		for ($i = 1; $i <= 2; $i++) {
 		    $prov = $_POST["nama_provinsi_$i"] ?? '';
@@ -2525,8 +2771,9 @@ $new_full_kode = $number_part . '-' . $new_suffix;
 		}
 		$domisili_baru = !empty($domisili_parts) ? implode(' || ', $domisili_parts) : $domisili_lama;
 		$tanggal_lahir = isset($_POST['tanggal_lahir']) ? sanitize_text_field($_POST['tanggal_lahir']) : '';	
-        // 1. Siapkan Data Dasar
-        $data_update = [
+        
+        // 1. Siapkan Data Dasar untuk Draft
+        $draft_fields = [
             'nama_lengkap'      => sanitize_text_field($_POST['nama_lengkap']),
             'nama_panggilan'    => sanitize_text_field($_POST['nama_panggilan']),
             'no_hp'             => sanitize_text_field($_POST['no_hp']),
@@ -2543,16 +2790,19 @@ $new_full_kode = $number_part . '-' . $new_suffix;
             'thread'            => esc_url_raw($_POST['thread']),
             'youtube'           => esc_url_raw($_POST['youtube']),
             'tag'               => sanitize_text_field($_POST['tag']),
-			'kode_nama'    => $new_full_kode, // ID Baru dengan angka unik yang aman
-    		'posisi'       => implode(',', $posisi_array),
-			'status'       => 'pending',
-			'porto_links' => json_encode($final_links)
+			'kode_nama'         => $new_full_kode,
+    		'posisi'            => implode(',', $posisi_array),
+			'porto_links'       => json_encode($final_links),
+            // Default file paths to current active values
+            'foto_profil'       => $personel->foto_profil,
+            'cv_url'            => $personel->cv_url,
+            'sertifikat_multiple'=> $personel->sertifikat_multiple,
         ];
 
         // 2. Handle Ganti Password (Hanya jika diisi)
         if (!empty($_POST['new_password'])) {
             if (strlen($_POST['new_password']) >= 8) {
-                $data_update['password'] = wp_hash_password($_POST['new_password']);
+                $draft_fields['password'] = wp_hash_password($_POST['new_password']);
             } else {
                 $message .= '<div class="notice-error">⚠️ Password minimal 8 karakter. Password tidak diubah.</div>';
             }
@@ -2565,7 +2815,6 @@ $new_full_kode = $number_part . '-' . $new_suffix;
             $uploadedfile = $_FILES['foto_profil'];
             $upload_overrides = array('test_form' => false);
             
-            // Validasi tipe file
             $file_type = wp_check_filetype($uploadedfile['name']);
             $allowed_types = array('image/jpeg', 'image/png', 'image/webp');
 
@@ -2573,14 +2822,7 @@ $new_full_kode = $number_part . '-' . $new_suffix;
                 $movefile = wp_handle_upload($uploadedfile, $upload_overrides);
 
                 if ($movefile && !isset($movefile['error'])) {
-                    // Opsional: Hapus foto lama dari server jika ingin hemat storage
-                    $old_photo = $wpdb->get_var($wpdb->prepare("SELECT foto_profil FROM $table_name WHERE id = %d", $personel_id));
-                    if ($old_photo) {
-                        $old_photo_path = str_replace(site_url('/'), ABSPATH, $old_photo);
-                        if (file_exists($old_photo_path)) unlink($old_photo_path);
-                    }
-
-                    $data_update['foto_profil'] = $movefile['url'];
+                    $draft_fields['foto_profil'] = $movefile['url'];
                 } else {
                     $message .= '<div class="notice-error">❌ Gagal upload foto: ' . $movefile['error'] . '</div>';
                 }
@@ -2590,57 +2832,90 @@ $new_full_kode = $number_part . '-' . $new_suffix;
         }
 		
 		// Pastikan library file WordPress dimuat
-require_once(ABSPATH . 'wp-admin/includes/file.php');
+        require_once(ABSPATH . 'wp-admin/includes/file.php');
 
-// 1. Update CV (Jika ada file baru)
-if (!empty($_FILES['cv_file']['name'])) {
-    $cv_upload = wp_handle_upload($_FILES['cv_file'], array('test_form' => false));
-    if (isset($cv_upload['url'])) {
-        $wpdb->update('wp9y_personel', ['cv_url' => $cv_upload['url']], ['id' => $personel_id]);
-    }
-}
-
-// 2. Update Sertifikat (Jika ada file baru)
-if (!empty($_FILES['sertifikat_files']['name'][0])) {
-    $files = $_FILES['sertifikat_files'];
-    $new_sertifikat_urls = array();
-    
-    foreach ($files['name'] as $key => $value) {
-        if ($files['name'][$key]) {
-            $file = array(
-                'name'     => $files['name'][$key],
-                'type'     => $files['type'][$key],
-                'tmp_name' => $files['tmp_name'][$key],
-                'error'    => $files['error'][$key],
-                'size'     => $files['size'][$key]
-            );
-
-            $upload = wp_handle_upload($file, array('test_form' => false));
-            if (isset($upload['url'])) {
-                $new_sertifikat_urls[] = $upload['url'];
+        // 4. Update CV (Jika ada file baru)
+        if (!empty($_FILES['cv_file']['name'])) {
+            $cv_upload = wp_handle_upload($_FILES['cv_file'], array('test_form' => false));
+            if (isset($cv_upload['url'])) {
+                $draft_fields['cv_url'] = $cv_upload['url'];
+            } else {
+                $message .= '<div class="notice-error">❌ Gagal upload CV: ' . $cv_upload['error'] . '</div>';
             }
         }
-    }
 
-    if (!empty($new_sertifikat_urls)) {
-        $sertifikat_json = json_encode($new_sertifikat_urls);
-        $wpdb->update('wp9y_personel', ['sertifikat_multiple' => $sertifikat_json], ['id' => $personel_id]);
-    }
-}
-
-        // 4. Eksekusi Update ke Database
-        $updated = $wpdb->update($table_name, $data_update, array('id' => $personel_id));
-
-        if ($updated !== false) {
-            $message = '<div class="notice-success">✅ Profil Anda berhasil diperbarui!</div>';
+        // 5. Update Sertifikat (Jika ada file baru)
+        if (!empty($_FILES['sertifikat_files']['name'][0])) {
+            $files = $_FILES['sertifikat_files'];
+            $new_sertifikat_urls = array();
             
-            // Update nama di session agar UI sidebar langsung berubah
-            $_SESSION['personel_nama'] = $data_update['nama_panggilan'];
+            foreach ($files['name'] as $key => $value) {
+                if ($files['name'][$key]) {
+                    $file = array(
+                        'name'     => $files['name'][$key],
+                        'type'     => $files['type'][$key],
+                        'tmp_name' => $files['tmp_name'][$key],
+                        'error'    => $files['error'][$key],
+                        'size'     => $files['size'][$key]
+                    );
+
+                    $upload = wp_handle_upload($file, array('test_form' => false));
+                    if (isset($upload['url'])) {
+                        $new_sertifikat_urls[] = $upload['url'];
+                    }
+                }
+            }
+
+            if (!empty($new_sertifikat_urls)) {
+                $draft_fields['sertifikat_multiple'] = json_encode($new_sertifikat_urls);
+            }
+        }
+
+        // 6. PENCEGAHAN BERKAS SAMPAH (Jika draft lama ditimpa draft baru)
+        $existing_draft_json = $wpdb->get_var($wpdb->prepare("SELECT draft_data FROM wp9y_personel_draft_edit WHERE personel_id = %d", $personel_id));
+        if ($existing_draft_json) {
+            $old_draft = json_decode($existing_draft_json, true);
             
-            // Refresh data personel agar form menampilkan data terbaru
-            $personel = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table_name WHERE id = %d", $personel_id));
+            // Periksa Foto Profil & CV
+            $file_keys = ['foto_profil', 'cv_url'];
+            foreach ($file_keys as $key) {
+                if (!empty($old_draft[$key]) && $old_draft[$key] !== $draft_fields[$key] && $old_draft[$key] !== $personel->$key) {
+                    $file_path = str_replace(site_url('/'), ABSPATH, $old_draft[$key]);
+                    if (file_exists($file_path)) {
+                        unlink($file_path);
+                    }
+                }
+            }
+            
+            // Periksa Sertifikat (Multiple)
+            if (!empty($old_draft['sertifikat_multiple']) && $old_draft['sertifikat_multiple'] !== $draft_fields['sertifikat_multiple'] && $old_draft['sertifikat_multiple'] !== $personel->sertifikat_multiple) {
+                $old_certs = json_decode($old_draft['sertifikat_multiple'], true) ?: [];
+                $new_certs = json_decode($draft_fields['sertifikat_multiple'], true) ?: [];
+                $active_certs = json_decode($personel->sertifikat_multiple, true) ?: [];
+                
+                if (is_array($old_certs)) {
+                    foreach ($old_certs as $cert_url) {
+                        if (!in_array($cert_url, $new_certs) && !in_array($cert_url, $active_certs)) {
+                            $file_path = str_replace(site_url('/'), ABSPATH, $cert_url);
+                            if (file_exists($file_path)) {
+                                unlink($file_path);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 7. Simpan Draft Ke Database (Menimpa draft lama jika ada)
+        $draft_saved = $wpdb->replace('wp9y_personel_draft_edit', [
+            'personel_id' => $personel_id,
+            'draft_data'  => json_encode($draft_fields),
+        ]);
+
+        if ($draft_saved !== false) {
+            $message = '<div class="notice-success">✅ Perubahan profil Anda telah dikirim untuk ditinjau oleh admin. Sementara itu, profil aktif Anda tetap berjalan.</div>';
         } else {
-            $message = '<div class="notice-error">❌ Terjadi kesalahan saat menyimpan ke database.</div>';
+            $message = '<div class="notice-error">❌ Terjadi kesalahan saat mengirim perubahan ke admin.</div>';
         }
     }
 }
@@ -3385,7 +3660,17 @@ function render_personel_edit_profil($personel, $message = '') {
     ?>
 
     <div class="form-edit-container">
-		<?php if (!empty($message)) echo $message; ?>
+		<?php 
+        if (!empty($message)) echo $message; 
+        
+        global $wpdb;
+        $has_draft = $wpdb->get_var($wpdb->prepare("SELECT id FROM wp9y_personel_draft_edit WHERE personel_id = %d", $personel->id));
+        if ($has_draft) {
+            echo '<div class="notice-info" style="background:#fff3cd; color:#856404; border-left:4px solid #ffc107; padding:15px; border-radius:4px; margin-bottom:20px;">
+                ⚠️ <strong>Informasi:</strong> Anda memiliki usulan perubahan profil yang sedang ditinjau oleh admin. Anda tetap dapat mengedit kembali jika ingin memperbarui usulan Anda.
+            </div>';
+        }
+        ?>
         <h2 style="color:var(--gold); margin-top:0; border-bottom:1px solid var(--border-gold); padding-bottom:10px;">
             👤 Edit Profil Lengkap
         </h2>
