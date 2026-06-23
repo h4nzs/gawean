@@ -5146,6 +5146,7 @@ $query .= " ORDER BY CASE WHEN p.rekomendasi = 'ya' THEN 0 ELSE 1 END ASC, p.id 
                 </select>
 
                 <button type="submit" class="btn-filter-gold">CARI PERSONEL</button>
+                <a href="<?php echo esc_url(home_url($GLOBALS['wp']->request)); ?>" class="btn-clear-filter">✖ RESET</a>
             </div>
         </form>
 
@@ -5301,6 +5302,8 @@ jQuery(document).ready(function($) {
         .select2-dropdown { background-color: #111 !important; border: 1px solid #444 !important; }
         .btn-filter-gold { background: var(--gold); color: #000; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; transition: 0.3s; }
         .btn-filter-gold:hover { background: #fff; box-shadow: 0 0 15px rgba(212, 175, 55, 0.4); }
+        .btn-clear-filter { background: transparent; color: #888; border: 1px solid #444; border-radius: 8px; padding: 12px; text-decoration: none; font-weight: bold; font-size: 13px; text-align: center; cursor: pointer; transition: 0.3s; display: flex; align-items: center; justify-content: center; }
+        .btn-clear-filter:hover { color: #fff; border-color: #888; background: rgba(255,255,255,0.05); }
 
         /* Grid Styles */
         .personel-public-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; }
