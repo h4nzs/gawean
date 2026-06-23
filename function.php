@@ -8282,9 +8282,24 @@ function render_portfolio_category_filter_bar($type = 'foto') {
         }
         
         @media (max-width: 768px) {
+            .lx-cat-nav {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 8px;
+                width: 100%;
+            }
             .lx-cat-btn {
-                padding: 8px 14px;
-                font-size: 12px;
+                width: 100%;
+                min-height: 48px;
+                padding: 6px 8px;
+                font-size: 11px;
+                white-space: normal;
+                line-height: 1.3;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                text-align: center;
+                box-sizing: border-box;
             }
         }
 
