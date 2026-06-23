@@ -1626,11 +1626,11 @@ function lx_status_personel_assets() {
                                    .text('Non-aktif').attr('class', 'status-badge status-non-aktif');
                             }
                         } else {
-                            alert('Gagal mengubah status.');
+                            (function(){var d=document.createElement('div');d.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:999999;display:flex;align-items:center;justify-content:center;';d.innerHTML='<div style="background:#1a1a1a;border:1px solid #ff4444;border-radius:8px;padding:30px 40px;max-width:400px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.5);"><div style="font-size:48px;margin-bottom:10px;">❌</div><p style="color:#fff;font-size:16px;margin:10px 0 20px;">Gagal mengubah status.</p><button onclick="this.parentNode.parentNode.remove()" style="background:#ff4444;color:#fff;border:none;padding:10px 24px;border-radius:4px;font-weight:bold;cursor:pointer;">OK</button></div>';document.body.appendChild(d);})();
                         }
                     },
                     error: function() {
-                        alert('Koneksi server bermasalah.');
+                        (function(){var d=document.createElement('div');d.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:999999;display:flex;align-items:center;justify-content:center;';d.innerHTML='<div style="background:#1a1a1a;border:1px solid #ff4444;border-radius:8px;padding:30px 40px;max-width:400px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.5);"><div style="font-size:48px;margin-bottom:10px;">❌</div><p style="color:#fff;font-size:16px;margin:10px 0 20px;">Koneksi server bermasalah.</p><button onclick="this.parentNode.parentNode.remove()" style="background:#ff4444;color:#fff;border:none;padding:10px 24px;border-radius:4px;font-weight:bold;cursor:pointer;">OK</button></div>';document.body.appendChild(d);})();
                     },
                     complete: function() {
                         btn.prop('disabled', false);
@@ -2282,7 +2282,18 @@ if (isset($_POST['submit_video']) || isset($_POST['update_video'])) {
         }
         $msg = "Video berhasil diunggah!";
     }
-    echo "<script>alert('$msg'); window.location.href='?tab=video';</script>";
+    echo "<script>
+    (function(){
+        var d=document.createElement('div');
+        d.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:999999;display:flex;align-items:center;justify-content:center;';
+        d.innerHTML='<div style=\"background:#1a1a1a;border:1px solid #d4af37;border-radius:8px;padding:30px 40px;max-width:400px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.5);\">'+
+            '<div style=\"font-size:48px;margin-bottom:10px;\">✅</div>'+
+            '<p style=\"color:#fff;font-size:16px;margin:10px 0 20px;\">$msg</p>'+
+            '<button onclick=\"window.location.href=\\'?tab=video\\'\" style=\"background:#d4af37;color:#000;border:none;padding:10px 24px;border-radius:4px;font-weight:bold;cursor:pointer;\">OK</button>'+
+        '</div>';
+        document.body.appendChild(d);
+    })();
+    </script>";
 }	
 // Handler Edit Portofolio
 if (isset($_POST['update_portofolio'])) {
@@ -2322,7 +2333,29 @@ if (isset($_POST['update_portofolio'])) {
             ]);
         }
 
-        echo "<script>alert('Perubahan disimpan! Mohon tunggu persetujuan admin kembali.'); window.location.href='?tab=foto';</script>";
+        echo "<script>
+(function(){
+    var d=document.createElement('div');
+    d.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:999999;display:flex;align-items:center;justify-content:center;';
+    var m=document.createElement('div');
+    m.style.cssText='background:#1a1a1a;border:1px solid #d4af37;border-radius:8px;padding:30px 40px;max-width:400px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.5);';
+    var e=document.createElement('div');
+    e.style.cssText='font-size:48px;margin-bottom:10px;';
+    e.textContent='✅';
+    m.appendChild(e);
+    var p=document.createElement('p');
+    p.style.cssText='color:#fff;font-size:16px;margin:10px 0 20px;';
+    p.textContent='Perubahan disimpan! Mohon tunggu persetujuan admin kembali.';
+    m.appendChild(p);
+    var b=document.createElement('button');
+    b.style.cssText='background:#d4af37;color:#000;border:none;padding:10px 24px;border-radius:4px;font-weight:bold;cursor:pointer;';
+    b.textContent='OK';
+    b.onclick=function(){window.location.href='?tab=foto';};
+    m.appendChild(b);
+    d.appendChild(m);
+    document.body.appendChild(d);
+})();
+</script>";
     }
 }	
 // Handler Hapus Portofolio
@@ -2343,7 +2376,29 @@ if (isset($_GET['tab']) && $_GET['tab'] == 'foto' && isset($_GET['action']) && $
         $wpdb->delete('wp9y_portofolio_kategori_map', ['portofolio_id' => $porto_id]);
         $wpdb->delete('wp9y_portofolio', ['id' => $porto_id]);
         
-        echo "<script>alert('Portofolio telah dihapus.'); window.location.href='?tab=foto';</script>";
+        echo "<script>
+(function(){
+    var d=document.createElement('div');
+    d.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:999999;display:flex;align-items:center;justify-content:center;';
+    var m=document.createElement('div');
+    m.style.cssText='background:#1a1a1a;border:1px solid #d4af37;border-radius:8px;padding:30px 40px;max-width:400px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.5);';
+    var e=document.createElement('div');
+    e.style.cssText='font-size:48px;margin-bottom:10px;';
+    e.textContent='✅';
+    m.appendChild(e);
+    var p=document.createElement('p');
+    p.style.cssText='color:#fff;font-size:16px;margin:10px 0 20px;';
+    p.textContent='Portofolio telah dihapus.';
+    m.appendChild(p);
+    var b=document.createElement('button');
+    b.style.cssText='background:#d4af37;color:#000;border:none;padding:10px 24px;border-radius:4px;font-weight:bold;cursor:pointer;';
+    b.textContent='OK';
+    b.onclick=function(){window.location.href='?tab=foto';};
+    m.appendChild(b);
+    d.appendChild(m);
+    document.body.appendChild(d);
+})();
+</script>";
     }
 }	
 // Handler Upload Portofolio
@@ -2395,10 +2450,33 @@ if (isset($_POST['submit_portofolio'])) {
             }
         }
 
-        echo "<script>alert('Portofolio berhasil diunggah! Menunggu moderasi admin.'); window.location.href='?tab=foto';</script>";
+        echo "<script>
+        (function(){
+            var d=document.createElement('div');
+            d.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:999999;display:flex;align-items:center;justify-content:center;';
+            d.innerHTML='<div style=\"background:#1a1a1a;border:1px solid #d4af37;border-radius:8px;padding:30px 40px;max-width:400px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.5);\">'+
+                '<div style=\"font-size:48px;margin-bottom:10px;\">✅</div>'+
+                '<p style=\"color:#fff;font-size:16px;margin:10px 0 20px;\">Portofolio berhasil diunggah! Menunggu moderasi admin.</p>'+
+                '<button onclick=\"window.location.href=\\'?tab=foto\\'\" style=\"background:#d4af37;color:#000;border:none;padding:10px 24px;border-radius:4px;font-weight:bold;cursor:pointer;\">OK</button>'+
+            '</div>';
+            document.body.appendChild(d);
+        })();
+        </script>";
     } else {
         // Jika user mengunggah file selain format di atas, $movefile['error'] akan berisi pesan penolakan
-        echo "<script>alert('Error upload: " . $movefile['error'] . "');</script>";
+        $err_msg = addslashes($movefile['error']);
+        echo "<script>
+        (function(){
+            var d=document.createElement('div');
+            d.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:999999;display:flex;align-items:center;justify-content:center;';
+            d.innerHTML='<div style=\"background:#1a1a1a;border:1px solid #ff4444;border-radius:8px;padding:30px 40px;max-width:400px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.5);\">'+
+                '<div style=\"font-size:48px;margin-bottom:10px;\">❌</div>'+
+                '<p style=\"color:#fff;font-size:16px;margin:10px 0 20px;\">$err_msg</p>'+
+                '<button onclick=\"this.closest(\\'div\\').parentElement.remove()\" style=\"background:#ff4444;color:#fff;border:none;padding:10px 24px;border-radius:4px;font-weight:bold;cursor:pointer;\">OK</button>'+
+            '</div>';
+            document.body.appendChild(d);
+        })();
+        </script>";
     }
 }
     }
@@ -2628,7 +2706,29 @@ if (!empty($_FILES['sertifikat_files']['name'][0])) {
 							'id' => $id, 
 							'personel_id' => $_SESSION['personel_id']
 						]);
-						echo "<script>alert('Video berhasil dihapus'); window.location.href='?tab=video';</script>";
+						echo "<script>
+(function(){
+    var d=document.createElement('div');
+    d.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:999999;display:flex;align-items:center;justify-content:center;';
+    var m=document.createElement('div');
+    m.style.cssText='background:#1a1a1a;border:1px solid #d4af37;border-radius:8px;padding:30px 40px;max-width:400px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.5);';
+    var e=document.createElement('div');
+    e.style.cssText='font-size:48px;margin-bottom:10px;';
+    e.textContent='✅';
+    m.appendChild(e);
+    var p=document.createElement('p');
+    p.style.cssText='color:#fff;font-size:16px;margin:10px 0 20px;';
+    p.textContent='Video berhasil dihapus';
+    m.appendChild(p);
+    var b=document.createElement('button');
+    b.style.cssText='background:#d4af37;color:#000;border:none;padding:10px 24px;border-radius:4px;font-weight:bold;cursor:pointer;';
+    b.textContent='OK';
+    b.onclick=function(){window.location.href='?tab=video';};
+    m.appendChild(b);
+    d.appendChild(m);
+    document.body.appendChild(d);
+})();
+</script>";
 						break;
 					}
 
@@ -3637,12 +3737,13 @@ jQuery(document).ready(function($) {
             width: '100%'
         });
 
-        function loadKota(provId) {
+        function loadKota(provId, selectedCities) {
+            if (selectedCities === undefined) selectedCities = savedKota;
             $.getJSON(ajaxUrl, { action: 'fetch_wilayah', type: 'regencies', prov_id: provId })
                 .done(function(regencies) {
                     var options = '';
                     regencies.forEach(function(reg) {
-                        var selected = (savedKota.indexOf(reg.name) !== -1) ? 'selected' : '';
+                        var selected = (selectedCities.indexOf(reg.name) !== -1) ? 'selected' : '';
                         options += '<option value="' + reg.name + '" ' + selected + '>' + reg.name + '</option>';
                     });
                     $kota.html(options).prop('disabled', false).trigger('change');
@@ -3656,14 +3757,15 @@ jQuery(document).ready(function($) {
             .done(function(provinces) {
                 var options = '<option value="">Pilih Provinsi</option>';
                 var matchedId = null;
+                var initialKota = savedKota.slice();
                 provinces.forEach(function(prov) {
                     var selected = (prov.name === savedProv) ? 'selected' : '';
                     if (selected) matchedId = prov.id;
                     options += '<option value="' + prov.id + '" data-name="' + prov.name + '" ' + selected + '>' + prov.name + '</option>';
                 });
                 $prov.html(options).trigger('change');
-                if (matchedId && savedKota.length) {
-                    loadKota(matchedId);
+                if (matchedId) {
+                    loadKota(matchedId, initialKota);
                 }
             })
             .fail(function() {
@@ -3674,9 +3776,8 @@ jQuery(document).ready(function($) {
             var provId = $(this).val();
             var provName = $(this).find(':selected').data('name');
             $hidden.val(provName || '');
-            savedKota = [];
             $kota.html('<option value="">Memuat data kota...</option>').prop('disabled', true);
-            if (provId) loadKota(provId);
+            if (provId) loadKota(provId, []);
             else $kota.html('<option value="">Pilih provinsi terlebih dahulu</option>').prop('disabled', true);
         });
     }
@@ -4157,10 +4258,10 @@ function lx_porto_status_scripts() {
                                .text('Non-aktif').attr('class', 'status-badge status-pill non-aktif');
                         }
                     } else {
-                        alert('Gagal mengubah status.');
+                        (function(){var d=document.createElement('div');d.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:999999;display:flex;align-items:center;justify-content:center;';d.innerHTML='<div style="background:#1a1a1a;border:1px solid #ff4444;border-radius:8px;padding:30px 40px;max-width:400px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.5);"><div style="font-size:48px;margin-bottom:10px;">❌</div><p style="color:#fff;font-size:16px;margin:10px 0 20px;">Gagal mengubah status.</p><button onclick="this.parentNode.parentNode.remove()" style="background:#ff4444;color:#fff;border:none;padding:10px 24px;border-radius:4px;font-weight:bold;cursor:pointer;">OK</button></div>';document.body.appendChild(d);})();
                     }
                 }).fail(function() {
-                    alert('Server Error.');
+                    (function(){var d=document.createElement('div');d.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:999999;display:flex;align-items:center;justify-content:center;';d.innerHTML='<div style="background:#1a1a1a;border:1px solid #ff4444;border-radius:8px;padding:30px 40px;max-width:400px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.5);"><div style="font-size:48px;margin-bottom:10px;">❌</div><p style="color:#fff;font-size:16px;margin:10px 0 20px;">Server Error.</p><button onclick="this.parentNode.parentNode.remove()" style="background:#ff4444;color:#fff;border:none;padding:10px 24px;border-radius:4px;font-weight:bold;cursor:pointer;">OK</button></div>';document.body.appendChild(d);})();
                 }).always(function() {
                     btn.prop('disabled', false);
                 });
@@ -6588,10 +6689,10 @@ function lx_rekomendasi_custom_assets() {
                             btn.removeClass('active');
                         }
                     } else {
-                        alert('Gagal memperbarui visibilitas sosial media.');
+                        (function(){var d=document.createElement('div');d.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:999999;display:flex;align-items:center;justify-content:center;';d.innerHTML='<div style="background:#1a1a1a;border:1px solid #ff4444;border-radius:8px;padding:30px 40px;max-width:400px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.5);"><div style="font-size:48px;margin-bottom:10px;">❌</div><p style="color:#fff;font-size:16px;margin:10px 0 20px;">Gagal memperbarui visibilitas sosial media.</p><button onclick="this.parentNode.parentNode.remove()" style="background:#ff4444;color:#fff;border:none;padding:10px 24px;border-radius:4px;font-weight:bold;cursor:pointer;">OK</button></div>';document.body.appendChild(d);})();
                     }
                 }).fail(function() {
-                    alert('Koneksi server bermasalah.');
+                    (function(){var d=document.createElement('div');d.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:999999;display:flex;align-items:center;justify-content:center;';d.innerHTML='<div style="background:#1a1a1a;border:1px solid #ff4444;border-radius:8px;padding:30px 40px;max-width:400px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.5);"><div style="font-size:48px;margin-bottom:10px;">❌</div><p style="color:#fff;font-size:16px;margin:10px 0 20px;">Koneksi server bermasalah.</p><button onclick="this.parentNode.parentNode.remove()" style="background:#ff4444;color:#fff;border:none;padding:10px 24px;border-radius:4px;font-weight:bold;cursor:pointer;">OK</button></div>';document.body.appendChild(d);})();
                 }).always(function() {
                     btn.prop('disabled', false);
                 });
@@ -6822,7 +6923,29 @@ function lx_handle_artikel_personel() {
                 update_post_meta($post_id, '_personel_author_id', $_SESSION['personel_id']);
             }
 
-            echo "<script>alert('Artikel berhasil dikirim! Status: Menunggu Approval Admin.'); window.location.href='';</script>";
+            echo "<script>
+(function(){
+    var d=document.createElement('div');
+    d.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:999999;display:flex;align-items:center;justify-content:center;';
+    var m=document.createElement('div');
+    m.style.cssText='background:#1a1a1a;border:1px solid #d4af37;border-radius:8px;padding:30px 40px;max-width:400px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.5);';
+    var e=document.createElement('div');
+    e.style.cssText='font-size:48px;margin-bottom:10px;';
+    e.textContent='✅';
+    m.appendChild(e);
+    var p=document.createElement('p');
+    p.style.cssText='color:#fff;font-size:16px;margin:10px 0 20px;';
+    p.textContent='Artikel berhasil dikirim! Status: Menunggu Approval Admin.';
+    m.appendChild(p);
+    var b=document.createElement('button');
+    b.style.cssText='background:#d4af37;color:#000;border:none;padding:10px 24px;border-radius:4px;font-weight:bold;cursor:pointer;';
+    b.textContent='OK';
+    b.onclick=function(){window.location.href='';};
+    m.appendChild(b);
+    d.appendChild(m);
+    document.body.appendChild(d);
+})();
+</script>";
             exit;
         }
     }
@@ -7025,7 +7148,29 @@ $expiry = date("Y-m-d H:i:s", strtotime(current_time('mysql') . ' +1 hour'));
                 wp_set_password($pass1, $wp_user->ID);
             }
 
-            echo "<script>alert('Password berhasil diperbarui! Silakan login kembali.'); window.location.href='".home_url('/login-personel')."';</script>";
+            echo "<script>
+(function(){
+    var d=document.createElement('div');
+    d.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:999999;display:flex;align-items:center;justify-content:center;';
+    var m=document.createElement('div');
+    m.style.cssText='background:#1a1a1a;border:1px solid #d4af37;border-radius:8px;padding:30px 40px;max-width:400px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.5);';
+    var e=document.createElement('div');
+    e.style.cssText='font-size:48px;margin-bottom:10px;';
+    e.textContent='✅';
+    m.appendChild(e);
+    var p=document.createElement('p');
+    p.style.cssText='color:#fff;font-size:16px;margin:10px 0 20px;';
+    p.textContent='Password berhasil diperbarui! Silakan login kembali.';
+    m.appendChild(p);
+    var b=document.createElement('button');
+    b.style.cssText='background:#d4af37;color:#000;border:none;padding:10px 24px;border-radius:4px;font-weight:bold;cursor:pointer;';
+    b.textContent='OK';
+    b.onclick=function(){window.location.href='".home_url('/login-personel')."';};
+    m.appendChild(b);
+    d.appendChild(m);
+    document.body.appendChild(d);
+})();
+</script>";
             exit;
         } else {
             wp_die("Token tidak valid atau sudah kedaluwarsa.");
@@ -7645,18 +7790,23 @@ function render_portfolio_category_selection($porto_id = 0, $type = 'foto') {
     }
     ?>
     <style>
-        .porto-cat-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-            gap: 12px;
+        .porto-cat-wrap {
+            display: flex;
+            gap: 20px;
             margin-top: 10px;
+        }
+        .porto-cat-list {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
         }
         .porto-cat-item {
             display: flex;
             align-items: center;
             gap: 10px;
             background: #1a1a1a;
-            padding: 10px 14px;
+            padding: 8px 14px;
             border-radius: 6px;
             border: 1px solid #333;
             cursor: pointer;
@@ -7688,22 +7838,64 @@ function render_portfolio_category_selection($porto_id = 0, $type = 'foto') {
         .porto-cat-item.disabled input {
             cursor: not-allowed;
         }
+        .porto-cat-desc-panel {
+            flex: 0 0 300px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 6px;
+            padding: 16px;
+            min-height: 120px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .porto-cat-desc-panel .cat-desc-title {
+            color: #d4af37;
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+        .porto-cat-desc-panel .cat-desc-text {
+            color: #ccc;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .porto-cat-desc-panel .cat-desc-placeholder {
+            color: #666;
+            font-size: 13px;
+            font-style: italic;
+            text-align: center;
+        }
+        @media (max-width: 768px) {
+            .porto-cat-wrap {
+                flex-direction: column;
+            }
+            .porto-cat-desc-panel {
+                flex: none;
+                width: 100%;
+            }
+        }
     </style>
 
     <div class="form-group full" style="margin-bottom: 25px;">
         <label style="display:block; margin-bottom:5px; color:#d4af37; font-weight:bold;">
             Kategori Portofolio (Maksimal Pilih 3) <span style="font-weight:normal; font-size:12px; color:#aaa;">- Opsional</span>
         </label>
-        <div class="porto-cat-grid">
-            <?php foreach ($categories as $cat) : 
-                $checked = in_array($cat->id, $selected_cats) ? 'checked' : '';
-                $item_class = $checked ? 'selected' : '';
-            ?>
-                <label class="porto-cat-item <?php echo $item_class; ?>">
-                    <input type="checkbox" name="portfolio_kategori[]" value="<?php echo $cat->id; ?>" <?php echo $checked; ?> class="porto-cat-cb">
-                    <span><?php echo esc_html($cat->nama); ?></span>
-                </label>
-            <?php endforeach; ?>
+        <div class="porto-cat-wrap">
+            <div class="porto-cat-list">
+                <?php foreach ($categories as $cat) : 
+                    $checked = in_array($cat->id, $selected_cats) ? 'checked' : '';
+                    $item_class = $checked ? 'selected' : '';
+                ?>
+                    <label class="porto-cat-item <?php echo $item_class; ?>" data-deskripsi="<?php echo esc_attr($cat->deskripsi ?? ''); ?>" data-judul="<?php echo esc_attr($cat->nama); ?>">
+                        <input type="checkbox" name="portfolio_kategori[]" value="<?php echo $cat->id; ?>" <?php echo $checked; ?> class="porto-cat-cb">
+                        <span><?php echo esc_html($cat->nama); ?></span>
+                    </label>
+                <?php endforeach; ?>
+            </div>
+            <div class="porto-cat-desc-panel" id="porto-cat-desc-panel">
+                <p class="cat-desc-placeholder">Arahkan atau klik kategori untuk melihat deskripsi</p>
+            </div>
         </div>
         <small style="color:var(--text-muted); display:block; margin-top:8px;">Pilih maksimal 3 kategori yang paling relevan dengan karya portofolio ini.</small>
     </div>
@@ -7727,13 +7919,39 @@ function render_portfolio_category_selection($porto_id = 0, $type = 'foto') {
             }
         }
 
-        // Handle change event
+        function showDescription(item) {
+            var panel = $('#porto-cat-desc-panel');
+            var title = item.data('judul');
+            var desc = item.data('deskripsi');
+            if (desc) {
+                panel.html('<div class="cat-desc-title">' + title + '</div><div class="cat-desc-text">' + desc + '</div>');
+            } else {
+                panel.html('<p class="cat-desc-placeholder">Arahkan atau klik kategori untuk melihat deskripsi</p>');
+            }
+        }
+
+        // Hover on category item shows description
+        $(document).on('mouseenter', '.porto-cat-item', function() {
+            showDescription($(this));
+        });
+
+        // Also update description when checkbox changes (for mobile tap)
         $(document).on('change', '.porto-cat-cb', function() {
             updateCheckboxLimit();
+            var item = $(this).closest('.porto-cat-item');
+            if ($(this).is(':checked')) {
+                showDescription(item);
+            }
         });
 
         // Initialize on load
         updateCheckboxLimit();
+        
+        // Show description for pre-selected item on load
+        var firstSelected = $('.porto-cat-item.selected').first();
+        if (firstSelected.length) {
+            showDescription(firstSelected);
+        }
     });
     </script>
     <?php
