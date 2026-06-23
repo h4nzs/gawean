@@ -7978,6 +7978,16 @@ function portfolio_kategori_setup_db() {
     ) $charset_collate;";
     dbDelta($sql_map_video);
 
+    // Create draft edit table for personnel profiles
+    $draft_edit_table = 'wp9y_personel_draft_edit';
+    $wpdb->query("CREATE TABLE IF NOT EXISTS $draft_edit_table (
+        id INT NOT NULL AUTO_INCREMENT,
+        personel_id BIGINT NOT NULL UNIQUE,
+        draft_data LONGTEXT NOT NULL,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (id)
+    ) $charset_collate;");
+
     // Populate categories if empty
     $count = $wpdb->get_var("SELECT COUNT(*) FROM $kategori_table");
     if ($count == 0) {
