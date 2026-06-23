@@ -3210,6 +3210,8 @@ function render_personel_edit_profil($personel, $message = '') {
                     </select>
                     <input type="hidden" name="nama_provinsi" id="edit_nama_provinsi" value="<?php echo esc_attr($dom_prov); ?>">
                 </div>
+            </div>
+            <div class="form-row">
                 <div class="form-group full">
                     <label>Kota/Kabupaten <span class="required">*</span> (Maksimal 3)</label>
                     <select name="kota_kabupaten[]" id="edit_domisili_kota" class="lx-select2-multi" multiple="multiple" style="width:100%;">
