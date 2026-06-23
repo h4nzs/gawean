@@ -697,11 +697,14 @@ jQuery(document).ready(function($) {
     line-height: 32px;
 }
 .select2-container--default .select2-selection--multiple .select2-search--inline {
-    display: none;
+    width: 0;
+    opacity: 0;
+    overflow: hidden;
 }
 .select2-container--default.select2-container--open .select2-selection--multiple .select2-search--inline,
 .select2-container--default .select2-selection--multiple:has(.select2-selection__choice) .select2-search--inline {
-    display: inline-block;
+    width: auto;
+    opacity: 1;
 }
 .form-row {
     overflow: visible !important;
@@ -3590,11 +3593,14 @@ function render_personel_edit_profil($personel, $message = '') {
     line-height: 32px;
 }
 .select2-container--default .select2-selection--multiple .select2-search--inline {
-    display: none;
+    width: 0;
+    opacity: 0;
+    overflow: hidden;
 }
 .select2-container--default.select2-container--open .select2-selection--multiple .select2-search--inline,
 .select2-container--default .select2-selection--multiple:has(.select2-selection__choice) .select2-search--inline {
-    display: inline-block;
+    width: auto;
+    opacity: 1;
 }
 .form-row {
     overflow: visible !important;
