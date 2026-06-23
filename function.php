@@ -845,7 +845,7 @@ $nama_depan = strtok($nama_panggilan, ' ');
         'nama_panggilan' => $nama_depan,
         'no_hp' => sanitize_text_field($_POST['no_hp']),
         'tanggal_lahir' => $tanggal_lahir,
-        'domisili' => isset($_POST['nama_provinsi']) && isset($_POST['kota_kabupaten']) ? sanitize_text_field($_POST['nama_provinsi']) . ' - ' . implode(', ', array_map('sanitize_text_field', $_POST['kota_kabupaten'])) : '',
+        'domisili' => !empty($_POST['nama_provinsi']) && !empty($_POST['kota_kabupaten']) ? sanitize_text_field($_POST['nama_provinsi']) . ' - ' . implode(', ', array_map('sanitize_text_field', $_POST['kota_kabupaten'])) : '',
         'posisi' => implode(',', array_unique($posisi_array)), // F,D,E
         'cv_url' => $cv_url,
         'sertifikat_multiple' => $sertifikat_json,
@@ -2319,6 +2319,11 @@ $new_full_kode = $number_part . '-' . $new_suffix;
     
     // Ambil maksimal 5 saja
     $final_links = array_slice($clean_links, 0, 5);
+		$domisili_lama = $wpdb->get_var($wpdb->prepare("SELECT domisili FROM $table_name WHERE id = %d", $personel_id));
+		$kota_baru = isset($_POST['kota_kabupaten']) ? array_filter(array_map('sanitize_text_field', $_POST['kota_kabupaten'])) : [];
+		$domisili_baru = !empty($_POST['nama_provinsi']) && !empty($kota_baru)
+		    ? sanitize_text_field($_POST['nama_provinsi']) . ' - ' . implode(', ', $kota_baru)
+		    : $domisili_lama;
 		$tanggal_lahir = isset($_POST['tanggal_lahir']) ? sanitize_text_field($_POST['tanggal_lahir']) : '';	
         // 1. Siapkan Data Dasar
         $data_update = [
@@ -2326,7 +2331,7 @@ $new_full_kode = $number_part . '-' . $new_suffix;
             'nama_panggilan'    => sanitize_text_field($_POST['nama_panggilan']),
             'no_hp'             => sanitize_text_field($_POST['no_hp']),
             'tanggal_lahir'     => $tanggal_lahir,
-            'domisili'          => isset($_POST['nama_provinsi']) && isset($_POST['kota_kabupaten']) ? sanitize_text_field($_POST['nama_provinsi']) . ' - ' . implode(', ', array_map('sanitize_text_field', $_POST['kota_kabupaten'])) : '',
+            'domisili'          => $domisili_baru,
             'sertifikat'        => sanitize_textarea_field($_POST['sertifikat']),
             'deskripsi'         => sanitize_textarea_field($_POST['deskripsi']),
             'peralatan'         => sanitize_textarea_field($_POST['peralatan']),
@@ -3120,6 +3125,26 @@ function render_personel_home($personel) {
 function render_personel_edit_profil($personel, $message = '') {
     // Ambil data posisi yang tersimpan (asumsi disimpan sebagai string koma: F,V,D)
     $posisi_saved = !empty($personel->posisi) ? explode(',', $personel->posisi) : [];
+
+    // Parse domisili: handle semua format
+    $dom_prov = '';
+    $dom_kota_list = [];
+    if (!empty($personel->domisili)) {
+        $parts = explode(' - ', $personel->domisili);
+        if (count($parts) >= 2) {
+            $dom_prov = trim($parts[0]);
+            $kota_str = trim($parts[1]);
+            if (!empty($kota_str)) {
+                $dom_kota_list = explode(', ', $kota_str);
+            }
+        } else {
+            $old_parts = explode(', ', $personel->domisili, 2);
+            if (count($old_parts) === 2) {
+                $dom_kota_list = [trim($old_parts[0])];
+                $dom_prov = trim($old_parts[1]);
+            }
+        }
+    }
     ?>
 
     <div class="form-edit-container">
@@ -3183,18 +3208,14 @@ function render_personel_edit_profil($personel, $message = '') {
                     <select name="provinsi" id="edit_domisili_provinsi" class="lx-select2" style="width:100%;">
                         <option value="">Pilih Provinsi</option>
                     </select>
-                    <input type="hidden" name="nama_provinsi" id="edit_nama_provinsi" value="<?php echo esc_attr(trim(explode(' - ', $personel->domisili)[0] ?? '')); ?>">
+                    <input type="hidden" name="nama_provinsi" id="edit_nama_provinsi" value="<?php echo esc_attr($dom_prov); ?>">
                 </div>
                 <div class="form-group full">
                     <label>Kota/Kabupaten <span class="required">*</span> (Maksimal 3)</label>
                     <select name="kota_kabupaten[]" id="edit_domisili_kota" class="lx-select2-multi" multiple="multiple" style="width:100%;">
-                        <?php
-                        $kota_parts = explode(' - ', $personel->domisili);
-                        $kota_list = isset($kota_parts[1]) ? explode(', ', $kota_parts[1]) : [];
-                        foreach ($kota_list as $kt) {
-                            echo '<option value="' . esc_attr(trim($kt)) . '" selected>' . esc_html(trim($kt)) . '</option>';
-                        }
-                        ?>
+                        <?php foreach ($dom_kota_list as $kt): ?>
+                            <option value="<?php echo esc_attr(trim($kt)); ?>" selected><?php echo esc_html(trim($kt)); ?></option>
+                        <?php endforeach; ?>
                     </select>
                 </div>
             </div>
@@ -4748,7 +4769,9 @@ function render_detail_personel_shortcode() {
 
 <?php if (intval($p->show_sosmed) !== 0): ?>
     <div class="lx-social-box" style="background:#0a0a0a; border:1px solid #333; border-radius:2px; margin-top:20px; padding:20px;">
-        <div class="lx-divider-text" style="margin-top:0; margin-bottom:15px;"><span>KONTAK & SOSMED</span></div>
+      
+        <div class="lx-divider-text" style="margin-top:0; margin-bottom:25px;"><span>KONTAK & SOSMED</span></div>
+
         
         <?php if (!empty($p->no_hp)): ?>
             <p style="font-size:13px; color:#ccc; margin-bottom:10px;">
