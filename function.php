@@ -845,7 +845,7 @@ $nama_depan = strtok($nama_panggilan, ' ');
         'nama_panggilan' => $nama_depan,
         'no_hp' => sanitize_text_field($_POST['no_hp']),
         'tanggal_lahir' => $tanggal_lahir,
-        'domisili' => isset($_POST['nama_provinsi']) && isset($_POST['kota_kabupaten']) ? sanitize_text_field($_POST['nama_provinsi']) . ' - ' . implode(', ', array_map('sanitize_text_field', $_POST['kota_kabupaten'])) : '',
+        'domisili' => !empty($_POST['nama_provinsi']) && !empty($_POST['kota_kabupaten']) ? sanitize_text_field($_POST['nama_provinsi']) . ' - ' . implode(', ', array_map('sanitize_text_field', $_POST['kota_kabupaten'])) : '',
         'posisi' => implode(',', array_unique($posisi_array)), // F,D,E
         'cv_url' => $cv_url,
         'sertifikat_multiple' => $sertifikat_json,
@@ -1103,6 +1103,7 @@ function personel_admin_menu() {
         30
     );
 }
+
 add_action('admin_menu', 'personel_admin_menu_porto');
 function personel_admin_menu_porto() {
     add_submenu_page(
@@ -1201,6 +1202,7 @@ function personel_admin_page() {
             <th>Status</th>
             <th>Tanggal</th>
             <th>Rekomendasi</th>
+            <th>Show Sosmed</th>
             <th width="20%">Aksi</th> </tr>
     </thead>
     <tbody>
@@ -1231,6 +1233,16 @@ $nama_depan = strtok($p->nama_panggilan, ' ');
                         <?php echo ($is_active_rec ? 'YA' : 'TIDAK'); ?>
                 </button>
             </td>
+            <td style="text-align:center;">
+                <?php $is_show_sosmed = (intval($p->show_sosmed) !== 0); ?>
+                <button type="button" 
+                        class="lx-toggle-sosmed-btn <?php echo ($is_show_sosmed ? 'active' : ''); ?>" 
+                        data-id="<?php echo $p->id; ?>" 
+                        data-status="<?php echo ($is_show_sosmed ? 1 : 0); ?>">
+                        <?php echo ($is_show_sosmed ? 'YA' : 'TIDAK'); ?>
+                </button>
+            </td>
+
             <td>
                 <a href="?page=personel-admin&view=<?php echo $p->id; ?>" class="button button-small" title="Lihat">👁️</a>
 
@@ -2307,6 +2319,11 @@ $new_full_kode = $number_part . '-' . $new_suffix;
     
     // Ambil maksimal 5 saja
     $final_links = array_slice($clean_links, 0, 5);
+		$domisili_lama = $wpdb->get_var($wpdb->prepare("SELECT domisili FROM $table_name WHERE id = %d", $personel_id));
+		$kota_baru = isset($_POST['kota_kabupaten']) ? array_filter(array_map('sanitize_text_field', $_POST['kota_kabupaten'])) : [];
+		$domisili_baru = !empty($_POST['nama_provinsi']) && !empty($kota_baru)
+		    ? sanitize_text_field($_POST['nama_provinsi']) . ' - ' . implode(', ', $kota_baru)
+		    : $domisili_lama;
 		$tanggal_lahir = isset($_POST['tanggal_lahir']) ? sanitize_text_field($_POST['tanggal_lahir']) : '';	
         // 1. Siapkan Data Dasar
         $data_update = [
@@ -2314,7 +2331,7 @@ $new_full_kode = $number_part . '-' . $new_suffix;
             'nama_panggilan'    => sanitize_text_field($_POST['nama_panggilan']),
             'no_hp'             => sanitize_text_field($_POST['no_hp']),
             'tanggal_lahir'     => $tanggal_lahir,
-            'domisili'          => isset($_POST['nama_provinsi']) && isset($_POST['kota_kabupaten']) ? sanitize_text_field($_POST['nama_provinsi']) . ' - ' . implode(', ', array_map('sanitize_text_field', $_POST['kota_kabupaten'])) : '',
+            'domisili'          => $domisili_baru,
             'sertifikat'        => sanitize_textarea_field($_POST['sertifikat']),
             'deskripsi'         => sanitize_textarea_field($_POST['deskripsi']),
             'peralatan'         => sanitize_textarea_field($_POST['peralatan']),
@@ -3108,6 +3125,26 @@ function render_personel_home($personel) {
 function render_personel_edit_profil($personel, $message = '') {
     // Ambil data posisi yang tersimpan (asumsi disimpan sebagai string koma: F,V,D)
     $posisi_saved = !empty($personel->posisi) ? explode(',', $personel->posisi) : [];
+
+    // Parse domisili: handle semua format
+    $dom_prov = '';
+    $dom_kota_list = [];
+    if (!empty($personel->domisili)) {
+        $parts = explode(' - ', $personel->domisili);
+        if (count($parts) >= 2) {
+            $dom_prov = trim($parts[0]);
+            $kota_str = trim($parts[1]);
+            if (!empty($kota_str)) {
+                $dom_kota_list = explode(', ', $kota_str);
+            }
+        } else {
+            $old_parts = explode(', ', $personel->domisili, 2);
+            if (count($old_parts) === 2) {
+                $dom_kota_list = [trim($old_parts[0])];
+                $dom_prov = trim($old_parts[1]);
+            }
+        }
+    }
     ?>
 
     <div class="form-edit-container">
@@ -3171,18 +3208,14 @@ function render_personel_edit_profil($personel, $message = '') {
                     <select name="provinsi" id="edit_domisili_provinsi" class="lx-select2" style="width:100%;">
                         <option value="">Pilih Provinsi</option>
                     </select>
-                    <input type="hidden" name="nama_provinsi" id="edit_nama_provinsi" value="<?php echo esc_attr(trim(explode(' - ', $personel->domisili)[0] ?? '')); ?>">
+                    <input type="hidden" name="nama_provinsi" id="edit_nama_provinsi" value="<?php echo esc_attr($dom_prov); ?>">
                 </div>
                 <div class="form-group full">
                     <label>Kota/Kabupaten <span class="required">*</span> (Maksimal 3)</label>
                     <select name="kota_kabupaten[]" id="edit_domisili_kota" class="lx-select2-multi" multiple="multiple" style="width:100%;">
-                        <?php
-                        $kota_parts = explode(' - ', $personel->domisili);
-                        $kota_list = isset($kota_parts[1]) ? explode(', ', $kota_parts[1]) : [];
-                        foreach ($kota_list as $kt) {
-                            echo '<option value="' . esc_attr(trim($kt)) . '" selected>' . esc_html(trim($kt)) . '</option>';
-                        }
-                        ?>
+                        <?php foreach ($dom_kota_list as $kt): ?>
+                            <option value="<?php echo esc_attr(trim($kt)); ?>" selected><?php echo esc_html(trim($kt)); ?></option>
+                        <?php endforeach; ?>
                     </select>
                 </div>
             </div>
@@ -4733,6 +4766,31 @@ function render_detail_personel_shortcode() {
         <?php echo wpautop(wp_kses_post($p->pricelist)); ?>
     </div>
 </div>
+
+<?php if (intval($p->show_sosmed) !== 0): ?>
+    <div class="lx-social-box" style="background:#0a0a0a; border:1px solid #333; border-radius:2px; margin-top:20px; padding:20px;">
+        <div class="lx-divider-text" style="margin-top:0; margin-bottom:25px;"><span>KONTAK & SOSMED</span></div>
+        
+        <?php if (!empty($p->no_hp)): ?>
+            <p style="font-size:13px; color:#ccc; margin-bottom:10px;">
+                📞 WhatsApp: <span style="font-weight:bold; color:#fff; display:block; margin-top:2px;"><?php echo esc_html($p->no_hp); ?></span>
+            </p>
+        <?php endif; ?>
+
+        <?php 
+        $socials = ['facebook', 'instagram', 'tiktok', 'thread', 'youtube'];
+        foreach ($socials as $s) {
+            if (!empty($p->$s)) {
+                echo '<p style="font-size:13px; margin-bottom:8px;">';
+                echo '🔗 ' . ucfirst($s) . ': ';
+                echo '<a href="' . esc_url($p->$s) . '" target="_blank" style="color:#d4af37; text-decoration:none; font-weight:bold; display:block; margin-top:2px;">Kunjungi Link</a>';
+                echo '</p>';
+            }
+        }
+        ?>
+    </div>
+<?php endif; ?>
+
                 </div>
 
                 <div class="lx-right">
@@ -6152,6 +6210,32 @@ function lx_handle_update_rekomendasi() {
     wp_die(); // Wajib ada untuk AJAX WordPress
 }
 
+add_action('wp_ajax_update_show_sosmed', 'lx_handle_update_show_sosmed');
+function lx_handle_update_show_sosmed() {
+    global $wpdb;
+    $id = isset($_POST['id']) ? intval($_POST['id']) : 0;
+    $current_status = isset($_POST['status']) ? intval($_POST['status']) : 1;
+
+    if (!$id) {
+        wp_send_json_error('ID tidak valid.');
+    }
+
+    $new_status = ($current_status === 1) ? 0 : 1;
+    $table_name = 'wp9y_personel';
+    $result = $wpdb->query($wpdb->prepare(
+        "UPDATE $table_name SET show_sosmed = %d WHERE id = %d",
+        $new_status,
+        $id
+    ));
+
+    if ($result !== false) {
+        wp_send_json_success(['new_status' => $new_status]);
+    } else {
+        wp_send_json_error($wpdb->last_error);
+    }
+    wp_die();
+}
+
 // Load CSS & JS di Admin
 add_action('admin_footer', 'lx_rekomendasi_custom_assets');
 function lx_rekomendasi_custom_assets() {
@@ -6177,6 +6261,25 @@ function lx_rekomendasi_custom_assets() {
             }
             .lx-toggle-btn:hover { opacity: 0.8; }
             .lx-toggle-btn:disabled { opacity: 0.5; cursor: wait; }
+
+            .lx-toggle-sosmed-btn {
+                border: none;
+                padding: 6px 10px;
+                border-radius: 4px;
+                color: #fff !important;
+                font-weight: 800;
+                font-size: 10px;
+                cursor: pointer;
+                width: 70px;
+                background: #d63638;
+                transition: 0.3s;
+                outline: none !important;
+            }
+            .lx-toggle-sosmed-btn.active {
+                background: #00a32a;
+            }
+            .lx-toggle-sosmed-btn:hover { opacity: 0.8; }
+            .lx-toggle-sosmed-btn:disabled { opacity: 0.5; cursor: wait; }
         </style>
         <script type="text/javascript">
         jQuery(document).ready(function($) {
@@ -6203,6 +6306,38 @@ function lx_rekomendasi_custom_assets() {
                             btn.removeClass('active');
                         }
                     }
+                    btn.prop('disabled', false);
+                });
+            });
+
+            $(document).on('click', '.lx-toggle-sosmed-btn', function(e) {
+                e.preventDefault();
+                var btn = $(this);
+                var id = btn.data('id');
+                var status = parseInt(btn.data('status'));
+
+                btn.text('...').prop('disabled', true);
+
+                $.post(ajaxurl, {
+                    action: 'update_show_sosmed',
+                    id: id,
+                    status: status
+                }, function(response) {
+                    if (response.success) {
+                        var ns = parseInt(response.data.new_status);
+                        btn.data('status', ns);
+                        btn.text(ns === 1 ? 'YA' : 'TIDAK');
+                        if (ns === 1) {
+                            btn.addClass('active');
+                        } else {
+                            btn.removeClass('active');
+                        }
+                    } else {
+                        alert('Gagal memperbarui visibilitas sosial media.');
+                    }
+                }).fail(function() {
+                    alert('Koneksi server bermasalah.');
+                }).always(function() {
                     btn.prop('disabled', false);
                 });
             });
