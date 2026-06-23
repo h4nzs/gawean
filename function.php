@@ -5439,11 +5439,6 @@ function shortcode_arsip_foto() {
         <?php render_portfolio_category_filter_bar('foto'); ?>
         <div class="lx-filter-header">
             <input type="text" id="search-foto" class="lx-input-flex" placeholder="Cari nama, lokasi, atau tags...">
-            <input type="date" id="filter-tgl-foto" class="lx-input-flex" title="Filter Tanggal Spesifik">
-            <select id="filter-tahun-foto" class="lx-input-flex">
-                <option value="">Semua Tahun</option>
-                <?php for($i=0; $i<=10; $i++) { $y = date('Y')-$i; echo "<option value='$y'>$y</option>"; } ?>
-            </select>
             <button id="btn-filter-foto" class="lx-btn-gold">CARI</button>
         </div>
 
@@ -5506,13 +5501,6 @@ function handle_ajax_load_more() {
     if(!empty($search)) {
         $query .= $wpdb->prepare(" AND (t.lokasi LIKE %s OR p.nama_panggilan LIKE %s OR t.tags LIKE %s)", '%'.$search.'%', '%'.$search.'%', '%'.$search.'%');
     }
-    if(!empty($tgl)) {
-        $query .= $wpdb->prepare(" AND t.tanggal_kegiatan = %s", $tgl);
-    }
-    if(!empty($tahun)) {
-        $query .= $wpdb->prepare(" AND t.tahun = %s", $tahun);
-    }
-
     // Sorting Logic
     switch ($sort) {
         case 'oldest_post': $query .= " ORDER BY t.id ASC"; break;
@@ -5527,7 +5515,7 @@ function handle_ajax_load_more() {
     if($res) {
         foreach($res as $r) echo render_porto_item_html($r, $type);
     } else if($offset == 0) {
-        echo "<p class='lx-no-data'>Data tidak ditemukan.</p>";
+        echo "<p class='lx-no-data'>Tidak ada data pada kategori ini.</p>";
     }
     wp_die();
 }
@@ -5617,8 +5605,6 @@ jQuery(document).ready(function($) {
             type: 'image',
             offset: offset,
             search: $('#search-foto').val(),
-            tanggal: $('#filter-tgl-foto').val(),
-            tahun: $('#filter-tahun-foto').val(),
             sort: $('#sort-foto').val(),
             category: $('#active-category-slug').val()
 
@@ -5775,11 +5761,6 @@ function shortcode_arsip_video_fixed() {
         <?php render_portfolio_category_filter_bar('video'); ?>
         <div class="lx-filter-header">
             <input type="text" id="search-video" class="lx-input-flex" placeholder="Cari nama, lokasi, atau tags...">
-            <input type="date" id="filter-tgl-video" class="lx-input-flex">
-            <select id="filter-tahun-video" class="lx-input-flex">
-                <option value="">Semua Tahun</option>
-                <?php for($i=0; $i<=10; $i++) { $y = date('Y')-$i; echo "<option value='$y'>$y</option>"; } ?>
-            </select>
             <button id="btn-filter-video" class="lx-btn-gold">CARI VIDEO</button>
         </div>
         <div class="lx-sort-wrapper">
@@ -5837,10 +5818,6 @@ function ajax_video_handler_fixed() {
         $query .= $wpdb->prepare(" AND (v.lokasi LIKE %s OR p.nama_panggilan LIKE %s OR v.tags LIKE %s OR p.kode_nama LIKE %s)", '%'.$search.'%', '%'.$search.'%', '%'.$search.'%', '%'.$search.'%');
     }
     
-    // Filter Tanggal & Tahun
-    if(!empty($tgl)) { $query .= $wpdb->prepare(" AND v.tanggal_kegiatan = %s", $tgl); }
-    if(!empty($tahun)) { $query .= $wpdb->prepare(" AND v.tahun = %s", $tahun); }
-
     // Sorting
     switch ($sort) {
         case 'oldest_post': $query .= " ORDER BY v.id ASC"; break;
@@ -5857,11 +5834,8 @@ function ajax_video_handler_fixed() {
         foreach($res as $r) {
             echo render_video_item_html($r);
         }
-    } else {
-        // Jika tidak ada hasil pada pencarian awal
-        if($offset === 0) {
-            echo '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #888;">Video tidak ditemukan.</div>';
-        }
+    } else if($offset == 0) {
+        echo '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #888;">Tidak ada data pada kategori ini.</div>';
     }
     
     wp_die();
@@ -6032,8 +6006,6 @@ jQuery(document).ready(function($) {
             data: {
                 action: 'load_more_porto_video',
                 search: $('#search-video').val(),
-                tanggal: $('#filter-tgl-video').val(),
-                tahun: $('#filter-tahun-video').val(),
                 sort: $('#sort-video').val(),
                 offset: offset,
                 category: $('#active-category-slug-video').val()
