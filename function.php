@@ -2311,10 +2311,10 @@ if (isset($_POST['update_portofolio'])) {
         $wpdb->update('wp9y_portofolio', $data_update, ['id' => $porto_id, 'personel_id' => $personel_id]);
         
         // Update kategori (many-to-many)
-        $wpdb->delete($wpdb->prefix . 'portofolio_kategori_map', ['portofolio_id' => $porto_id]);
+        $wpdb->delete('wp9y_portofolio_kategori_map', ['portofolio_id' => $porto_id]);
         $selected_kategori = isset($_POST['portfolio_kategori']) ? array_slice(array_map('intval', $_POST['portfolio_kategori']), 0, 3) : [];
         foreach ($selected_kategori as $cat_id) {
-            $wpdb->insert($wpdb->prefix . 'portofolio_kategori_map', [
+            $wpdb->insert('wp9y_portofolio_kategori_map', [
                 'portofolio_id' => $porto_id,
                 'kategori_id'   => $cat_id,
             ]);
@@ -2338,7 +2338,7 @@ if (isset($_GET['tab']) && $_GET['tab'] == 'foto' && isset($_GET['action']) && $
         if (file_exists($file_path)) unlink($file_path);
 
         // Hapus data dari database
-        $wpdb->delete($wpdb->prefix . 'portofolio_kategori_map', ['portofolio_id' => $porto_id]);
+        $wpdb->delete('wp9y_portofolio_kategori_map', ['portofolio_id' => $porto_id]);
         $wpdb->delete('wp9y_portofolio', ['id' => $porto_id]);
         
         echo "<script>alert('Portofolio telah dihapus.'); window.location.href='?tab=foto';</script>";
@@ -2386,7 +2386,7 @@ if (isset($_POST['submit_portofolio'])) {
         if ($new_porto_id) {
             $selected_kategori = isset($_POST['portfolio_kategori']) ? array_slice(array_map('intval', $_POST['portfolio_kategori']), 0, 3) : [];
             foreach ($selected_kategori as $cat_id) {
-                $wpdb->insert($wpdb->prefix . 'portofolio_kategori_map', [
+                $wpdb->insert('wp9y_portofolio_kategori_map', [
                     'portofolio_id' => $new_porto_id,
                     'kategori_id'   => $cat_id,
                 ]);
@@ -2621,7 +2621,7 @@ if (!empty($_FILES['sertifikat_files']['name'][0])) {
 					// Logika Hapus Video
 					if ($action == 'delete' && $id > 0) {
 						global $wpdb;
-						$wpdb->delete($wpdb->prefix . 'portofolio_video_kategori_map', ['video_id' => $id]);
+						$wpdb->delete('wp9y_portofolio_video_kategori_map', ['video_id' => $id]);
 						$wpdb->delete('wp9y_portofolio_video', [
 							'id' => $id, 
 							'personel_id' => $_SESSION['personel_id']
@@ -5495,11 +5495,11 @@ function handle_ajax_load_more() {
     $where_cat = "";
     if (!empty($category) && $category !== 'semua') {
         if ($type === 'video') {
-            $join = " JOIN {$wpdb->prefix}portofolio_video_kategori_map m ON t.id = m.video_id 
-                      JOIN {$wpdb->prefix}kategori k ON m.kategori_id = k.id ";
+            $join = " JOIN wp9y_portofolio_video_kategori_map m ON t.id = m.video_id 
+                      JOIN wp9y_kategori k ON m.kategori_id = k.id ";
         } else {
-            $join = " JOIN {$wpdb->prefix}portofolio_kategori_map m ON t.id = m.portofolio_id 
-                      JOIN {$wpdb->prefix}kategori k ON m.kategori_id = k.id ";
+            $join = " JOIN wp9y_portofolio_kategori_map m ON t.id = m.portofolio_id 
+                      JOIN wp9y_kategori k ON m.kategori_id = k.id ";
         }
         $where_cat = $wpdb->prepare(" AND k.slug = %s ", $category);
     }
@@ -5510,7 +5510,7 @@ function handle_ajax_load_more() {
               WHERE t.status = 'approved' AND p.status = 'approved' $where_cat";
 
     if(!empty($search)) {
-        $query .= $wpdb->prepare(" AND (t.lokasi LIKE %s OR p.nama_panggilan LIKE %s OR t.tags LIKE %s)", '%'.$search.'%', '%'.$search.'%', '%'.$search.'%');
+        $query .= $wpdb->prepare(" AND (t.judul LIKE %s OR t.lokasi LIKE %s OR p.nama_panggilan LIKE %s OR t.tags LIKE %s)", '%'.$search.'%', '%'.$search.'%', '%'.$search.'%', '%'.$search.'%');
     }
     // Sorting Logic
     switch ($sort) {
@@ -5667,6 +5667,13 @@ jQuery(document).ready(function($) {
         getPorto(true);
     });
 
+    $(document).off('keypress', '#search-foto').on('keypress', '#search-foto', function(e) {
+        if(e.which == 13) {
+            e.preventDefault();
+            getPorto(true);
+        }
+    });
+
    $(document)
 .off('click', '#load-more-foto')
 .on('click', '#load-more-foto', function(e) {
@@ -5812,8 +5819,8 @@ function ajax_video_handler_fixed() {
     $join = "";
     $where_cat = "";
     if (!empty($category) && $category !== 'semua') {
-        $join = " JOIN {$wpdb->prefix}portofolio_video_kategori_map m ON v.id = m.video_id 
-                  JOIN {$wpdb->prefix}kategori k ON m.kategori_id = k.id ";
+        $join = " JOIN wp9y_portofolio_video_kategori_map m ON v.id = m.video_id 
+                  JOIN wp9y_kategori k ON m.kategori_id = k.id ";
         $where_cat = $wpdb->prepare(" AND k.slug = %s ", $category);
     }
 
@@ -5825,8 +5832,8 @@ function ajax_video_handler_fixed() {
 
     // Filter Pencarian
     if(!empty($search)) {
-        // PERBAIKAN: Search juga mencakup kode_nama agar pencarian lebih akurat
-        $query .= $wpdb->prepare(" AND (v.lokasi LIKE %s OR p.nama_panggilan LIKE %s OR v.tags LIKE %s OR p.kode_nama LIKE %s)", '%'.$search.'%', '%'.$search.'%', '%'.$search.'%', '%'.$search.'%');
+        // PERBAIKAN: Search juga mencakup judul agar pencarian lebih akurat
+        $query .= $wpdb->prepare(" AND (v.judul LIKE %s OR v.lokasi LIKE %s OR p.nama_panggilan LIKE %s OR v.tags LIKE %s OR p.kode_nama LIKE %s)", '%'.$search.'%', '%'.$search.'%', '%'.$search.'%', '%'.$search.'%', '%'.$search.'%');
     }
     
     // Sorting
@@ -7505,9 +7512,9 @@ add_action('wp_footer', 'popup_ad_render_frontend', 9999);
  */
 function portfolio_kategori_setup_db() {
     global $wpdb;
-    $kategori_table = $wpdb->prefix . 'kategori';
-    $map_foto_table = $wpdb->prefix . 'portofolio_kategori_map';
-    $map_video_table = $wpdb->prefix . 'portofolio_video_kategori_map';
+    $kategori_table = 'wp9y_kategori';
+    $map_foto_table = 'wp9y_portofolio_kategori_map';
+    $map_video_table = 'wp9y_portofolio_video_kategori_map';
     $charset_collate = $wpdb->get_charset_collate();
 
     require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
@@ -7607,7 +7614,7 @@ function portfolio_kategori_setup_db() {
         }
     }
 }
-add_action('admin_init', 'portfolio_kategori_setup_db');
+add_action('init', 'portfolio_kategori_setup_db');
 
 /**
  * Step 2: Render category selection checkboxes in personnel dashboard forms (up to 3)
@@ -7616,7 +7623,7 @@ function render_portfolio_category_selection($porto_id = 0, $type = 'foto') {
     global $wpdb;
     
     // Check table existence to prevent errors
-    $table_kategori = $wpdb->prefix . 'kategori';
+    $table_kategori = 'wp9y_kategori';
     $table_exists = $wpdb->get_var("SHOW TABLES LIKE '$table_kategori'");
     if (!$table_exists) {
         return;
@@ -7629,7 +7636,7 @@ function render_portfolio_category_selection($porto_id = 0, $type = 'foto') {
     
     $selected_cats = [];
     if ($porto_id > 0) {
-        $table_map = ($type === 'video') ? $wpdb->prefix . 'portofolio_video_kategori_map' : $wpdb->prefix . 'portofolio_kategori_map';
+        $table_map = ($type === 'video') ? 'wp9y_portofolio_video_kategori_map' : 'wp9y_portofolio_kategori_map';
         $id_column = ($type === 'video') ? 'video_id' : 'portofolio_id';
         $selected_cats = $wpdb->get_col($wpdb->prepare("SELECT kategori_id FROM $table_map WHERE $id_column = %d", $porto_id));
     }
