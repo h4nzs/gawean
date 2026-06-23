@@ -5099,10 +5099,12 @@ if ($filter_price) {
     $query .= $wpdb->prepare(" AND p.pricelist_perhari = %s", $filter_price);
 }
 if ($filter_provinsi) {
-    $query .= $wpdb->prepare(" AND p.domisili LIKE %s", '%' . $filter_provinsi . ' - %');
+    $like_prov = '%' . $wpdb->esc_like($filter_provinsi) . '%';
+    $query .= $wpdb->prepare(" AND p.domisili LIKE %s", $like_prov);
 }
 if ($filter_kota) {
-    $query .= $wpdb->prepare(" AND p.domisili LIKE %s", '%' . $filter_kota . '%');
+    $like_kota = '%' . $wpdb->esc_like($filter_kota) . '%';
+    $query .= $wpdb->prepare(" AND p.domisili LIKE %s", $like_kota);
 }
 
 // TAMBAHKAN BARIS INI UNTUK SORTING PRIORITAS
