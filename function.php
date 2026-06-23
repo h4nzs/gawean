@@ -7798,40 +7798,33 @@ function render_portfolio_category_selection($porto_id = 0, $type = 'foto') {
         }
         .porto-cat-item {
             display: flex;
-            align-items: stretch;
+            align-items: center;
             background: #1a1a1a;
             border-radius: 6px;
             border: 1px solid #333;
             cursor: pointer;
             transition: all 0.2s ease;
             user-select: none;
-            overflow: hidden;
         }
         .porto-cat-item:hover {
             border-color: #d4af37;
             background: #222;
         }
-        .porto-cat-left {
-            display: flex;
-            align-items: flex-start;
-            gap: 10px;
-            flex-shrink: 0;
-            width: 220px;
-            padding: 10px 14px;
-            border-right: 1px solid #333;
-            background: rgba(255,255,255,0.02);
-        }
         .porto-cat-item input[type="checkbox"] {
-            margin-top: 2px;
             flex-shrink: 0;
+            margin: 0 0 0 14px;
             accent-color: #d4af37;
             cursor: pointer;
         }
         .porto-cat-name {
+            flex-shrink: 0;
+            width: 200px;
+            padding: 10px 14px;
             font-size: 14px;
             color: #eee;
             font-weight: 600;
             line-height: 1.4;
+            border-right: 1px solid #333;
         }
         .porto-cat-desc {
             flex: 1;
@@ -7843,12 +7836,9 @@ function render_portfolio_category_selection($porto_id = 0, $type = 'foto') {
         .porto-cat-item.selected {
             border-color: #d4af37;
         }
-        .porto-cat-item.selected .porto-cat-left {
-            border-right-color: #d4af37;
-            background: rgba(212, 175, 55, 0.08);
-        }
         .porto-cat-item.selected .porto-cat-name {
             color: #d4af37;
+            border-right-color: #d4af37;
         }
         .porto-cat-item.disabled {
             opacity: 0.4;
@@ -7859,16 +7849,21 @@ function render_portfolio_category_selection($porto_id = 0, $type = 'foto') {
         }
         @media (max-width: 640px) {
             .porto-cat-item {
-                flex-direction: column;
+                flex-wrap: wrap;
             }
-            .porto-cat-left {
+            .porto-cat-item input[type="checkbox"] {
+                margin: 8px 0 8px 14px;
+            }
+            .porto-cat-name {
                 width: auto;
+                flex: 1;
                 border-right: none;
-                border-bottom: 1px solid #333;
-                padding: 8px 14px;
+                padding: 8px 14px 8px 8px;
             }
             .porto-cat-desc {
-                padding: 8px 14px 8px 38px;
+                width: 100%;
+                flex: none;
+                padding: 0 14px 8px 38px;
             }
         }
     </style>
@@ -7883,10 +7878,8 @@ function render_portfolio_category_selection($porto_id = 0, $type = 'foto') {
                 $item_class = $checked ? 'selected' : '';
             ?>
                 <label class="porto-cat-item <?php echo $item_class; ?>">
-                    <span class="porto-cat-left">
-                        <input type="checkbox" name="portfolio_kategori[]" value="<?php echo $cat->id; ?>" <?php echo $checked; ?> class="porto-cat-cb">
-                        <span class="porto-cat-name"><?php echo esc_html($cat->nama); ?></span>
-                    </span>
+                    <input type="checkbox" name="portfolio_kategori[]" value="<?php echo $cat->id; ?>" <?php echo $checked; ?> class="porto-cat-cb">
+                    <span class="porto-cat-name"><?php echo esc_html($cat->nama); ?></span>
                     <span class="porto-cat-desc"><?php echo esc_html($cat->deskripsi ?? ''); ?></span>
                 </label>
             <?php endforeach; ?>
