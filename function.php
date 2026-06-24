@@ -1294,10 +1294,13 @@ function personel_admin_page() {
                     }
                 }
                 
-                // 3. Update main personnel record with draft fields
+                // 3. Hapus field yang tidak ada di tabel DB sebelum update
+                unset($draft_fields['sertifikat']);
+
+                // 4. Update main personnel record with draft fields
                 $wpdb->update('wp9y_personel', $draft_fields, ['id' => $personel_id]);
                 
-                // 4. Delete the draft row
+                // 5. Delete the draft row
                 $wpdb->delete('wp9y_personel_draft_edit', ['personel_id' => $personel_id]);
                 
                 echo '<div class="notice notice-success"><p>✅ Perubahan profil berhasil disetujui dan diperbarui!</p></div>';
@@ -2779,7 +2782,6 @@ if (isset($_POST['update_profile_personel'])) {
             'no_hp'             => sanitize_text_field($_POST['no_hp']),
             'tanggal_lahir'     => $tanggal_lahir,
             'domisili'          => $domisili_baru,
-            'sertifikat'        => sanitize_textarea_field($_POST['sertifikat']),
             'deskripsi'         => sanitize_textarea_field($_POST['deskripsi']),
             'peralatan'         => sanitize_textarea_field($_POST['peralatan']),
             'pricelist_perhari' => sanitize_text_field($_POST['pricelist_perhari']),
