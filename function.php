@@ -1289,8 +1289,12 @@ function personel_admin_page() {
     // Handle actions (Keep your existing logic here)
     if (isset($_POST['action']) && wp_verify_nonce($_POST['_wpnonce'], 'personel_action')) {
         if ($_POST['action'] == 'approve' && isset($_POST['personel_id'])) {
-            $wpdb->update($table_name, ['status' => 'approved'], ['id' => intval($_POST['personel_id'])]);
-            echo '<div class="notice notice-success"><p>✅ Approved!</p></div>';
+            $approve_result = $wpdb->update($table_name, ['status' => 'approved'], ['id' => intval($_POST['personel_id'])]);
+            if ($approve_result === false) {
+                echo '<div class="notice notice-error"><p>❌ Gagal approve: ' . esc_html($wpdb->last_error) . '</p></div>';
+            } else {
+                echo '<div class="notice notice-success"><p>✅ Approved!</p></div>';
+            }
         }
        if ($_POST['action'] == 'delete' && isset($_POST['personel_id'])) {
     $personel_id = intval($_POST['personel_id']);
@@ -1357,14 +1361,19 @@ function personel_admin_page() {
                 
                 // 3. Hapus field yang tidak ada di tabel DB sebelum update
                 unset($draft_fields['sertifikat']);
-
-                // 4. Update main personnel record with draft fields
+                
+                // 4. Auto-approve akun personel jika masih pending
+                if ($personel && $personel->status === 'pending') {
+                    $draft_fields['status'] = 'approved';
+                }
+                
+                // 5. Update main personnel record with draft fields
                 $update_result = $wpdb->update('wp9y_personel', $draft_fields, ['id' => $personel_id]);
                 
                 if ($update_result === false) {
                     echo '<div class="notice notice-error"><p>❌ Gagal memperbarui data: ' . esc_html($wpdb->last_error) . '</p></div>';
                 } else {
-                    // 5. Delete the draft row
+                    // 6. Delete the draft row
                     $wpdb->delete('wp9y_personel_draft_edit', ['personel_id' => $personel_id]);
                     echo '<div class="notice notice-success"><p>✅ Perubahan profil berhasil disetujui dan diperbarui! (' . intval($update_result) . ' baris terpengaruh)</p></div>';
                 }
