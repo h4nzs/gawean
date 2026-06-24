@@ -3620,16 +3620,38 @@ function render_personel_home($personel) {
 }
 
 function render_personel_edit_profil($personel, $message = '') {
+    global $wpdb;
+    
+    // Ambil draft usulan jika ada
+    $draft_row = $wpdb->get_row($wpdb->prepare("SELECT * FROM wp9y_personel_draft_edit WHERE personel_id = %d", $personel->id));
+    
+    // Buat objek tampilan gabungan (Default ke data personel aktif)
+    $display_data = clone $personel;
+    $has_draft = false;
+    
+    if ($draft_row) {
+        $has_draft = true;
+        $draft_fields = json_decode($draft_row->draft_data, true);
+        if (is_array($draft_fields)) {
+            foreach ($draft_fields as $key => $value) {
+                // Jangan timpa password dengan hash di form edit
+                if ($key !== 'password') {
+                    $display_data->$key = $value;
+                }
+            }
+        }
+    }
+
     // Ambil data posisi yang tersimpan (asumsi disimpan sebagai string koma: F,V,D)
-    $posisi_saved = !empty($personel->posisi) ? explode(',', $personel->posisi) : [];
+    $posisi_saved = !empty($display_data->posisi) ? explode(',', $display_data->posisi) : [];
 
     // Parse domisili: handle semua format
     $dom_prov_1 = '';
     $dom_kota_1 = [];
     $dom_prov_2 = '';
     $dom_kota_2 = [];
-    if (!empty($personel->domisili)) {
-        $blok_prov = explode(' || ', $personel->domisili);
+    if (!empty($display_data->domisili)) {
+        $blok_prov = explode(' || ', $display_data->domisili);
         foreach ($blok_prov as $idx => $blok) {
             $parts = explode(' - ', $blok);
             if (count($parts) >= 2) {
@@ -3663,8 +3685,6 @@ function render_personel_edit_profil($personel, $message = '') {
 		<?php 
         if (!empty($message)) echo $message; 
         
-        global $wpdb;
-        $has_draft = $wpdb->get_var($wpdb->prepare("SELECT id FROM wp9y_personel_draft_edit WHERE personel_id = %d", $personel->id));
         if ($has_draft) {
             echo '<div class="notice-info" style="background:#fff3cd; color:#856404; border-left:4px solid #ffc107; padding:15px; border-radius:4px; margin-bottom:20px;">
                 ⚠️ <strong>Informasi:</strong> Anda memiliki usulan perubahan profil yang sedang ditinjau oleh admin. Anda tetap dapat mengedit kembali jika ingin memperbarui usulan Anda.
@@ -3682,18 +3702,18 @@ function render_personel_edit_profil($personel, $message = '') {
             <div class="form-row">
                 <div class="form-group">
                     <label>Nama Lengkap <span class="required">*</span></label>
-                    <input type="text" name="nama_lengkap" value="<?php echo esc_attr($personel->nama_lengkap); ?>" required>
+                    <input type="text" name="nama_lengkap" value="<?php echo esc_attr($display_data->nama_lengkap); ?>" required>
                 </div>
                 <div class="form-group">
                     <label>Nama Panggilan <span class="required">*</span></label>
-                    <input type="text" name="nama_panggilan" value="<?php echo esc_attr($personel->nama_panggilan); ?>" required maxlength="30">
+                    <input type="text" name="nama_panggilan" value="<?php echo esc_attr($display_data->nama_panggilan); ?>" required maxlength="30">
                 </div>
             </div>
 
             <div class="form-row">
                 <div class="form-group">
                     <label>Email <span class="required">*</span></label>
-                    <input type="email" value="<?php echo esc_attr($personel->email); ?>" disabled style="background:#333; cursor:not-allowed;">
+                    <input type="email" value="<?php echo esc_attr($display_data->email); ?>" disabled style="background:#333; cursor:not-allowed;">
                     <small>Email tidak dapat diubah demi keamanan akun.</small>
                 </div>
                 <div class="form-group">
@@ -3706,7 +3726,7 @@ function render_personel_edit_profil($personel, $message = '') {
             <div class="form-group full">
                 <label>Foto Profil Saat Ini</label>
                 <div style="display:flex; align-items:center; gap:15px; margin-bottom:10px;">
-                    <img src="<?php echo esc_url($personel->foto_profil); ?>" width="60" height="60" style="border-radius:50%; border:1px solid var(--gold);">
+                    <img src="<?php echo esc_url($display_data->foto_profil); ?>" width="60" height="60" style="border-radius:50%; border:1px solid var(--gold);">
                     <input type="file" name="foto_profil" accept="image/jpeg,image/png,image/webp">
                 </div>
                 <small>Max 2MB, JPG/PNG/WEBP. Biarkan kosong jika tidak ingin ganti.</small>
@@ -3716,11 +3736,11 @@ function render_personel_edit_profil($personel, $message = '') {
             <div class="form-row">
                 <div class="form-group">
                     <label>No. HP</label>
-                    <input type="tel" name="no_hp" value="<?php echo esc_attr($personel->no_hp); ?>">
+                    <input type="tel" name="no_hp" value="<?php echo esc_attr($display_data->no_hp); ?>">
                 </div>
                 <div class="form-group">
 				<label>Tanggal Lahir</label>
-				<input type="date" name="tanggal_lahir" value="<?php echo esc_attr($personel->tanggal_lahir); ?>" required>
+				<input type="date" name="tanggal_lahir" value="<?php echo esc_attr($display_data->tanggal_lahir); ?>" required>
 			</div>
             </div>
 
@@ -3774,7 +3794,7 @@ function render_personel_edit_profil($personel, $message = '') {
                 <label>Posisi <span class="required">*</span></label>
                 <div class="checkbox-group">
                     <?php 
-                   $list_posisi = [
+                    $list_posisi = [
 						'F' => '📸 Fotografer',
 						'V' => '🎥 Videografer',
 						'D' => '🚁 Drone',
@@ -3795,9 +3815,9 @@ function render_personel_edit_profil($personel, $message = '') {
 			<div class="form-row">
     <div class="form-group">
         <label>Update CV (PDF)</label>
-        <?php if (!empty($personel->cv_url)): ?>
+        <?php if (!empty($display_data->cv_url)): ?>
             <div style="margin-bottom: 10px;">
-                <a href="<?php echo esc_url($personel->cv_url); ?>" target="_blank" style="color: #d4af37; text-decoration: none; font-size: 12px;">
+                <a href="<?php echo esc_url($display_data->cv_url); ?>" target="_blank" style="color: #d4af37; text-decoration: none; font-size: 12px;">
                     <span class="dashicons dashicons-pdf"></span> Lihat CV Saat Ini
                 </a>
             </div>
@@ -3809,7 +3829,7 @@ function render_personel_edit_profil($personel, $message = '') {
     <div class="form-group">
         <label>Update Sertifikat (Gambar)</label>
         <?php 
-        $sertifikat_data = json_decode($personel->sertifikat_multiple, true);
+        $sertifikat_data = json_decode($display_data->sertifikat_multiple, true);
         if (!empty($sertifikat_data) && is_array($sertifikat_data)): ?>
             <div style="display: flex; gap: 5px; margin-bottom: 10px; overflow-x: auto; padding-bottom: 5px;">
                 <?php foreach ($sertifikat_data as $img_url): ?>
@@ -3826,7 +3846,7 @@ function render_personel_edit_profil($personel, $message = '') {
                 
                 <div class="form-group">
                     <label>Deskripsi Diri</label>
-                    <textarea name="deskripsi" rows="3"><?php echo esc_textarea($personel->deskripsi); ?></textarea>
+                    <textarea name="deskripsi" rows="3"><?php echo esc_textarea($display_data->deskripsi); ?></textarea>
 					<small style="color:var(--text-muted);">*Tidak mencantumkan no WA dan link sosmed</small><br>
                 </div>
             </div>
@@ -3835,7 +3855,7 @@ function render_personel_edit_profil($personel, $message = '') {
     <div id="porto-link-container">
         <?php 
         // Ambil data link dari database
-        $porto_links = json_decode($personel->porto_links, true);
+        $porto_links = json_decode($display_data->porto_links, true);
         
         // Jika kosong, sediakan minimal 1 input kosong
         if (empty($porto_links)) {
@@ -3870,22 +3890,22 @@ function render_personel_edit_profil($personel, $message = '') {
             <div class="form-row">
                 <div class="form-group">
                     <label>Peralatan</label>
-                    <textarea name="peralatan" rows="4"><?php echo esc_textarea($personel->peralatan); ?></textarea>
+                    <textarea name="peralatan" rows="4"><?php echo esc_textarea($display_data->peralatan); ?></textarea>
                 </div>
                 <div class="form-group">
                     <label>Pricelist/hari <span class="required">*</span></label>
                     <select name="pricelist_perhari" required>
                         <option value="">Pilih Range</option>
-                        <option value="dibawah_1jt" <?php selected($personel->pricelist_perhari, 'dibawah_1jt'); ?>>💰 Dibawah 1 jt</option>
-                        <option value="1jt_3jt" <?php selected($personel->pricelist_perhari, '1jt_3jt'); ?>>💎 1 jt - 3 jt</option>
-                        <option value="diatas_3jt" <?php selected($personel->pricelist_perhari, 'diatas_3jt'); ?>>⭐ Diatas 3 jt</option>
+                        <option value="dibawah_1jt" <?php selected($display_data->pricelist_perhari, 'dibawah_1jt'); ?>>💰 Dibawah 1 jt</option>
+                        <option value="1jt_3jt" <?php selected($display_data->pricelist_perhari, '1jt_3jt'); ?>>💎 1 jt - 3 jt</option>
+                        <option value="diatas_3jt" <?php selected($display_data->pricelist_perhari, 'diatas_3jt'); ?>>⭐ Diatas 3 jt</option>
                     </select>
                 </div>
             </div>
 
             <div class="form-group full" style="background: #eee; border-radius: 8px; padding: 10px; color: #000;">
                 <label style="color:#000; font-weight:bold;">Pricelist Detail</label>
-                <?php wp_editor($personel->pricelist, 'pricelist', [
+                <?php wp_editor($display_data->pricelist, 'pricelist', [
                     'textarea_name' => 'pricelist',
                     'textarea_rows' => 6,
                     'media_buttons' => false,
@@ -3900,28 +3920,28 @@ function render_personel_edit_profil($personel, $message = '') {
 <div class="form-row">
     <div class="form-group">
         <label>Facebook URL</label>
-        <input type="url" name="facebook" value="<?php echo esc_url($personel->facebook); ?>" placeholder="https://facebook.com/username">
+        <input type="url" name="facebook" value="<?php echo esc_url($display_data->facebook); ?>" placeholder="https://facebook.com/username">
     </div>
     <div class="form-group">
         <label>Instagram URL</label>
-        <input type="url" name="instagram" value="<?php echo esc_url($personel->instagram); ?>" placeholder="https://instagram.com/username">
+        <input type="url" name="instagram" value="<?php echo esc_url($display_data->instagram); ?>" placeholder="https://instagram.com/username">
     </div>
 </div>
 
 <div class="form-row">
     <div class="form-group">
         <label>TikTok URL</label>
-        <input type="url" name="tiktok" value="<?php echo esc_url($personel->tiktok); ?>" placeholder="https://tiktok.com/@username">
+        <input type="url" name="tiktok" value="<?php echo esc_url($display_data->tiktok); ?>" placeholder="https://tiktok.com/@username">
     </div>
     <div class="form-group">
         <label>Threads URL</label>
-        <input type="url" name="thread" value="<?php echo esc_url($personel->thread); ?>" placeholder="https://threads.net/@username">
+        <input type="url" name="thread" value="<?php echo esc_url($display_data->thread); ?>" placeholder="https://threads.net/@username">
     </div>
 </div>
 
 <div class="form-group full">
     <label>YouTube Channel URL</label>
-    <input type="url" name="youtube" value="<?php echo esc_url($personel->youtube); ?>" placeholder="https://youtube.com/@username">
+    <input type="url" name="youtube" value="<?php echo esc_url($display_data->youtube); ?>" placeholder="https://youtube.com/@username">
 </div>
 
             <div class="form-group full">
@@ -3931,8 +3951,16 @@ function render_personel_edit_profil($personel, $message = '') {
         <div class="tag-input-wrapper" id="tagInputWrapper">
             <input type="text" id="tagInput" placeholder="Ketik tag lalu tekan Enter/Koma...">
         </div>
-        <input type="hidden" name="tag" id="tagHiddenInput" value="<?php echo esc_attr($personel->tag); ?>">
+        <input type="hidden" name="tag" id="tagHiddenInput" value="<?php echo esc_attr($display_data->tag); ?>">
     </div>
+    <small style="color:var(--text-muted);">Maksimal 10 tags. Contoh: cinematic, wedding, colorist</small>
+</div>
+
+            <button type="submit" class="btn-update">
+                🚀 Simpan Perubahan Profil
+            </button>
+        </form>
+    </div>v>
     <small style="color:var(--text-muted);">Maksimal 10 tags. Contoh: cinematic, wedding, colorist</small>
 </div>
 
@@ -4014,6 +4042,7 @@ jQuery(document).ready(function($) {
         var $prov = $(provSelector);
         var $kota = $(kotaSelector);
         var $hidden = $(hiddenSelector);
+        var isInitializing = true;
 
         $prov.select2({ placeholder: "Pilih Provinsi", width: '100%' });
         $kota.select2({
@@ -4022,21 +4051,28 @@ jQuery(document).ready(function($) {
             width: '100%'
         });
 
-        function loadKota(provId, selectedCities) {
-            if (selectedCities === undefined) selectedCities = savedKota;
-            $.getJSON(ajaxUrl, { action: 'fetch_wilayah', type: 'regencies', prov_id: provId })
-                .done(function(regencies) {
-                    var options = '';
-                    regencies.forEach(function(reg) {
-                        var selected = (selectedCities.indexOf(reg.name) !== -1) ? 'selected' : '';
-                        options += '<option value="' + reg.name + '" ' + selected + '>' + reg.name + '</option>';
+        $prov.on('change', function() {
+            if (isInitializing) return;
+            var provId = $(this).val();
+            var provName = $(this).find(':selected').data('name');
+            $hidden.val(provName || '');
+            $kota.html('<option value="">Memuat data kota...</option>').prop('disabled', true);
+            if (provId) {
+                $.getJSON(ajaxUrl, { action: 'fetch_wilayah', type: 'regencies', prov_id: provId })
+                    .done(function(regencies) {
+                        var options = '';
+                        regencies.forEach(function(reg) {
+                            options += '<option value="' + reg.name + '">' + reg.name + '</option>';
+                        });
+                        $kota.html(options).prop('disabled', false).trigger('change');
+                    })
+                    .fail(function() {
+                        $kota.html('<option value="">Gagal memuat data</option>').prop('disabled', false);
                     });
-                    $kota.html(options).prop('disabled', false).trigger('change');
-                })
-                .fail(function() {
-                    $kota.html('<option value="">Gagal memuat data</option>').prop('disabled', false);
-                });
-        }
+            } else {
+                $kota.html('<option value="">Pilih provinsi terlebih dahulu</option>').prop('disabled', true);
+            }
+        });
 
         $.getJSON(ajaxUrl, { action: 'fetch_wilayah', type: 'provinces' })
             .done(function(provinces) {
@@ -4050,21 +4086,28 @@ jQuery(document).ready(function($) {
                 });
                 $prov.html(options).trigger('change');
                 if (matchedId) {
-                    loadKota(matchedId, initialKota);
+                    $.getJSON(ajaxUrl, { action: 'fetch_wilayah', type: 'regencies', prov_id: matchedId })
+                        .done(function(regencies) {
+                            var options = '';
+                            regencies.forEach(function(reg) {
+                                var selected = (initialKota.indexOf(reg.name) !== -1) ? 'selected' : '';
+                                options += '<option value="' + reg.name + '" ' + selected + '>' + reg.name + '</option>';
+                            });
+                            $kota.html(options).prop('disabled', false).trigger('change');
+                            isInitializing = false;
+                        })
+                        .fail(function() {
+                            $kota.html('<option value="">Gagal memuat data</option>').prop('disabled', false);
+                            isInitializing = false;
+                        });
+                } else {
+                    isInitializing = false;
                 }
             })
             .fail(function() {
                 $prov.html('<option value="">Gagal memuat data</option>');
+                isInitializing = false;
             });
-
-        $prov.on('change', function() {
-            var provId = $(this).val();
-            var provName = $(this).find(':selected').data('name');
-            $hidden.val(provName || '');
-            $kota.html('<option value="">Memuat data kota...</option>').prop('disabled', true);
-            if (provId) loadKota(provId, []);
-            else $kota.html('<option value="">Pilih provinsi terlebih dahulu</option>').prop('disabled', true);
-        });
     }
 
     var ajaxUrl = '<?php echo admin_url('admin-ajax.php'); ?>';
