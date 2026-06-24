@@ -5343,7 +5343,7 @@ jQuery(document).ready(function($) {
             </div>
 
             <div class="p-info">
-                <span>📍 <?php echo esc_html($p->domisili); ?></span>
+                <span class="p-lokasi" title="<?php echo esc_attr($p->domisili); ?>">📍 <?php echo esc_html($p->domisili); ?></span>
                 <span>🎂 <?php 
 				if (!empty($p->tanggal_lahir) && $p->tanggal_lahir !== '0000-00-00') {
 					$bday = new DateTime($p->tanggal_lahir);
@@ -5407,7 +5407,8 @@ jQuery(document).ready(function($) {
         .p-tags { margin-bottom: 15px; display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; }
         .mini-tag { font-size: 10px; background: rgba(212, 175, 55, 0.1); color: var(--gold); padding: 3px 8px; border-radius: 4px; border: 1px solid rgba(212, 175, 55, 0.3); font-weight: 600; }
         
-        .p-info { color: #888; font-size: 13px; display: flex; justify-content: center; gap: 15px; margin-bottom: 15px; }
+        .p-info { color: #888; font-size: 13px; display: flex; justify-content: center; gap: 15px; margin-bottom: 15px; align-items: center; }
+        .p-lokasi { max-width: 150px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; word-break: break-word; }
         .p-stats { color: #bbb; font-size: 14px; margin-bottom: 20px; padding-top: 10px; border-top: 1px solid #333; }
         .p-stats b { color: var(--gold); }
         
@@ -8803,6 +8804,217 @@ function render_portfolio_category_filter_bar($type = 'foto') {
                     getPorto(true);
                 }
             }
+        });
+    });
+    </script>
+    <?php
+}
+
+// ============================================================
+// INJECT AJAX LOAD MORE TO DEFAULT WP / ELEMENTOR POST WIDGETS
+// ============================================================
+add_action('wp_footer', 'inject_load_more_to_default_wp_widgets', 99);
+function inject_load_more_to_default_wp_widgets() {
+    if (is_admin()) return;
+    ?>
+    <style>
+        .lx-load-wrap { text-align: center; margin: 40px 0; clear: both; }
+        .lx-btn-outline { background: transparent; border: 1px solid #d4af37; color: #d4af37; padding: 12px 35px; border-radius: 5px; cursor: pointer; font-weight: bold; transition: 0.3s; display: inline-block; text-decoration: none; }
+        .lx-btn-outline:hover { background: #d4af37; color: #000; text-decoration: none; }
+    </style>
+    <script>
+    jQuery(document).ready(function($) {
+        let containerSelectors = [
+            '.elementor-posts-container',
+            '.wp-block-post-template',
+            '.posts-container',
+            '.site-main',
+            'main#main',
+            'main#content'
+        ];
+        
+        let paginationSelectors = [
+            '.elementor-pagination',
+            '.wp-block-query-pagination',
+            '.pagination',
+            '.nav-links',
+            '.page-numbers',
+            '.navigation.pagination',
+            '.navigation'
+        ];
+
+        let $container = null;
+        for (let sel of containerSelectors) {
+            if ($(sel).length) {
+                $container = $(sel).first();
+                break;
+            }
+        }
+
+        let $pagination = null;
+        let paginationSelector = '';
+        for (let sel of paginationSelectors) {
+            if ($(sel).length) {
+                $pagination = $(sel).first();
+                paginationSelector = sel;
+                break;
+            }
+        }
+
+        // Smart fallback detection: find pagination container using links to page 2 or any page/paged URL
+        if (!$pagination || !$pagination.length) {
+            let $pageLink = $('a[href*="/page/2"], a[href*="paged=2"], a[href*="/page/"], a[href*="paged="]').first();
+            if ($pageLink.length) {
+                $pagination = $pageLink.closest('nav, div, ul');
+                let classAttr = $pagination.attr('class');
+                if (classAttr) {
+                    paginationSelector = '.' + classAttr.trim().replace(/\s+/g, '.');
+                } else {
+                    paginationSelector = $pagination.prop('tagName').toLowerCase();
+                }
+            }
+        }
+
+        // If the matched pagination is an individual item/link rather than a container wrapper
+        if ($pagination && $pagination.length) {
+            if ($pagination.is('a, span') || !$pagination.find('a').length) {
+                $pagination = $pagination.parent();
+                let classAttr = $pagination.attr('class');
+                if (classAttr) {
+                    paginationSelector = '.' + classAttr.trim().replace(/\s+/g, '.');
+                } else {
+                    paginationSelector = $pagination.prop('tagName').toLowerCase();
+                }
+            }
+        }
+
+        // Smart fallback detection for container: find standard article grid above pagination
+        if (!$container || !$container.length) {
+            if ($pagination && $pagination.length) {
+                let $prev = $pagination.prev();
+                if ($prev.length && ($prev.find('article').length || $prev.find('.post').length || $prev.find('[class*="post"]').length)) {
+                    $container = $prev;
+                }
+            }
+        }
+
+        if (!$container || !$container.length) {
+            return;
+        }
+
+        if (!$pagination || !$pagination.length) {
+            return;
+        }
+
+        // Determine item selector based on container content
+        let itemSelector = '';
+        if ($container.hasClass('elementor-posts-container') || $container.find('article.elementor-post').length) {
+            itemSelector = 'article.elementor-post, .elementor-post';
+        } else if ($container.hasClass('wp-block-post-template') || $container.find('.wp-block-post').length) {
+            itemSelector = '.wp-block-post';
+        } else if ($container.find('article').length) {
+            itemSelector = 'article';
+        } else if ($container.find('.post').length) {
+            itemSelector = '.post';
+        } else {
+            let $firstPost = $container.find('[class*="post"]').first();
+            if ($firstPost.length) {
+                let postClass = $firstPost.attr('class').split(' ')[0];
+                itemSelector = '.' + postClass;
+            } else {
+                itemSelector = '> div';
+            }
+        }
+
+        // Make sure container is the direct parent of the items to preserve layout structure
+        let $firstItem = $container.find(itemSelector).first();
+        if ($firstItem.length) {
+            $container = $firstItem.parent();
+        }
+
+        // Get Next Page URL
+        let getNextUrl = function($pag) {
+            if (!$pag || !$pag.length) return null;
+            
+            // 1. Check for explicit class "next"
+            let $next = $pag.find('a.next, a.next-page, a.wp-block-query-pagination-next, a.page-navigation-next, .next.page-numbers');
+            if ($next.length && $next.attr('href')) {
+                return $next.attr('href');
+            }
+
+            // 2. Check for text or symbol in link
+            let foundUrl = null;
+            $pag.find('a').each(function() {
+                let text = $(this).text().trim().toLowerCase();
+                let href = $(this).attr('href');
+                if (href && (text.indexOf('next') !== -1 || text.indexOf('›') !== -1 || text.indexOf('»') !== -1 || text.indexOf('berikut') !== -1 || text.indexOf('lanjut') !== -1 || text.indexOf('>') !== -1)) {
+                    foundUrl = href;
+                    return false;
+                }
+            });
+            if (foundUrl) return foundUrl;
+
+            // 3. Fallback: find the item after the active/current item
+            let $current = $pag.find('.current, .active, [aria-current="page"]');
+            if ($current.length) {
+                let $nextLi = $current.closest('li').next('li');
+                if ($nextLi.length) {
+                    let $link = $nextLi.find('a');
+                    if ($link.length && $link.attr('href')) {
+                        return $link.attr('href');
+                    }
+                }
+                
+                let $nextLink = $current.next('a');
+                if ($nextLink.length && $nextLink.attr('href')) {
+                    return $nextLink.attr('href');
+                }
+            }
+            
+            return null;
+        };
+
+        let nextUrl = getNextUrl($pagination);
+        if (!nextUrl) {
+            return;
+        }
+
+        // Hide original pagination
+        $pagination.hide();
+
+        // Create and append Load More button
+        let $loadMoreWrap = $('<div class="lx-load-wrap"><button id="load-more-injected" class="lx-btn-outline">MUAT LEBIH BANYAK</button></div>');
+        $container.after($loadMoreWrap);
+
+        let $btn = $('#load-more-injected');
+
+        $btn.on('click', function(e) {
+            e.preventDefault();
+            if (!nextUrl) return;
+
+            $btn.text('LOADING...').prop('disabled', true);
+
+            $.get(nextUrl, function(data) {
+                let $temp = $('<div></div>').append($.parseHTML(data));
+                let $newItems = $temp.find(itemSelector);
+                let $newPagination = $temp.find(paginationSelector);
+
+                if ($newItems.length) {
+                    $container.append($newItems);
+                    
+                    // Update nextUrl from new pagination
+                    nextUrl = getNextUrl($newPagination);
+                    if (nextUrl) {
+                        $btn.text('MUAT LEBIH BANYAK').prop('disabled', false);
+                    } else {
+                        $btn.text('SEMUA TELAH DIMUAT').prop('disabled', true).fadeOut(1500);
+                    }
+                } else {
+                    $btn.text('SEMUA TELAH DIMUAT').prop('disabled', true).fadeOut(1500);
+                }
+            }).fail(function() {
+                $btn.text('ERROR LOADING').prop('disabled', false);
+            });
         });
     });
     </script>
