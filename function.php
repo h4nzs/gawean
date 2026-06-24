@@ -1298,12 +1298,15 @@ function personel_admin_page() {
                 unset($draft_fields['sertifikat']);
 
                 // 4. Update main personnel record with draft fields
-                $wpdb->update('wp9y_personel', $draft_fields, ['id' => $personel_id]);
+                $update_result = $wpdb->update('wp9y_personel', $draft_fields, ['id' => $personel_id]);
                 
-                // 5. Delete the draft row
-                $wpdb->delete('wp9y_personel_draft_edit', ['personel_id' => $personel_id]);
-                
-                echo '<div class="notice notice-success"><p>✅ Perubahan profil berhasil disetujui dan diperbarui!</p></div>';
+                if ($update_result === false) {
+                    echo '<div class="notice notice-error"><p>❌ Gagal memperbarui data: ' . esc_html($wpdb->last_error) . '</p></div>';
+                } else {
+                    // 5. Delete the draft row
+                    $wpdb->delete('wp9y_personel_draft_edit', ['personel_id' => $personel_id]);
+                    echo '<div class="notice notice-success"><p>✅ Perubahan profil berhasil disetujui dan diperbarui! (' . intval($update_result) . ' baris terpengaruh)</p></div>';
+                }
                 
             } elseif ($_POST['draft_action'] == 'reject') {
                 // Reject: delete new files uploaded in draft
