@@ -2589,7 +2589,8 @@ if (isset($_POST['submit_video']) || isset($_POST['update_video'])) {
                 'kategori_id' => $cat_id,
             ]);
         }
-        $msg = "Video berhasil diperbarui!";
+        wp_redirect(add_query_arg('tab', 'video'));
+        exit;
     } else {
         $wpdb->insert('wp9y_portofolio_video', $data);
         $new_video_id = $wpdb->insert_id;
@@ -2602,20 +2603,9 @@ if (isset($_POST['submit_video']) || isset($_POST['update_video'])) {
                 ]);
             }
         }
-        $msg = "Video berhasil diunggah!";
+        wp_redirect(add_query_arg('tab', 'video'));
+        exit;
     }
-    echo "<script>
-    (function(){
-        var d=document.createElement('div');
-        d.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:999999;display:flex;align-items:center;justify-content:center;';
-        d.innerHTML='<div style=\"background:#1a1a1a;border:1px solid #d4af37;border-radius:8px;padding:30px 40px;max-width:400px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.5);\">'+
-            '<div style=\"font-size:48px;margin-bottom:10px;\">✅</div>'+
-            '<p style=\"color:#fff;font-size:16px;margin:10px 0 20px;\">$msg</p>'+
-            '<button onclick=\"window.location.href=\\'?tab=video\\'\" style=\"background:#d4af37;color:#000;border:none;padding:10px 24px;border-radius:4px;font-weight:bold;cursor:pointer;\">OK</button>'+
-        '</div>';
-        document.body.appendChild(d);
-    })();
-    </script>";
 }	
 // Handler Edit Portofolio
 if (isset($_POST['update_portofolio'])) {
@@ -2655,29 +2645,8 @@ if (isset($_POST['update_portofolio'])) {
             ]);
         }
 
-        echo "<script>
-(function(){
-    var d=document.createElement('div');
-    d.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:999999;display:flex;align-items:center;justify-content:center;';
-    var m=document.createElement('div');
-    m.style.cssText='background:#1a1a1a;border:1px solid #d4af37;border-radius:8px;padding:30px 40px;max-width:400px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.5);';
-    var e=document.createElement('div');
-    e.style.cssText='font-size:48px;margin-bottom:10px;';
-    e.textContent='✅';
-    m.appendChild(e);
-    var p=document.createElement('p');
-    p.style.cssText='color:#fff;font-size:16px;margin:10px 0 20px;';
-    p.textContent='Perubahan disimpan! Mohon tunggu persetujuan admin kembali.';
-    m.appendChild(p);
-    var b=document.createElement('button');
-    b.style.cssText='background:#d4af37;color:#000;border:none;padding:10px 24px;border-radius:4px;font-weight:bold;cursor:pointer;';
-    b.textContent='OK';
-    b.onclick=function(){window.location.href='?tab=foto';};
-    m.appendChild(b);
-    d.appendChild(m);
-    document.body.appendChild(d);
-})();
-</script>";
+        wp_redirect(add_query_arg('tab', 'foto'));
+        exit;
     }
 }	
 // Handler Hapus Portofolio
@@ -2698,29 +2667,8 @@ if (isset($_GET['tab']) && $_GET['tab'] == 'foto' && isset($_GET['action']) && $
         $wpdb->delete('wp9y_portofolio_kategori_map', ['portofolio_id' => $porto_id]);
         $wpdb->delete('wp9y_portofolio', ['id' => $porto_id]);
         
-        echo "<script>
-(function(){
-    var d=document.createElement('div');
-    d.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:999999;display:flex;align-items:center;justify-content:center;';
-    var m=document.createElement('div');
-    m.style.cssText='background:#1a1a1a;border:1px solid #d4af37;border-radius:8px;padding:30px 40px;max-width:400px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.5);';
-    var e=document.createElement('div');
-    e.style.cssText='font-size:48px;margin-bottom:10px;';
-    e.textContent='✅';
-    m.appendChild(e);
-    var p=document.createElement('p');
-    p.style.cssText='color:#fff;font-size:16px;margin:10px 0 20px;';
-    p.textContent='Portofolio telah dihapus.';
-    m.appendChild(p);
-    var b=document.createElement('button');
-    b.style.cssText='background:#d4af37;color:#000;border:none;padding:10px 24px;border-radius:4px;font-weight:bold;cursor:pointer;';
-    b.textContent='OK';
-    b.onclick=function(){window.location.href='?tab=foto';};
-    m.appendChild(b);
-    d.appendChild(m);
-    document.body.appendChild(d);
-})();
-</script>";
+        wp_redirect(add_query_arg('tab', 'foto'));
+        exit;
     }
 }	
 // Handler Upload Portofolio
@@ -2772,18 +2720,8 @@ if (isset($_POST['submit_portofolio'])) {
             }
         }
 
-        echo "<script>
-        (function(){
-            var d=document.createElement('div');
-            d.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:999999;display:flex;align-items:center;justify-content:center;';
-            d.innerHTML='<div style=\"background:#1a1a1a;border:1px solid #d4af37;border-radius:8px;padding:30px 40px;max-width:400px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.5);\">'+
-                '<div style=\"font-size:48px;margin-bottom:10px;\">✅</div>'+
-                '<p style=\"color:#fff;font-size:16px;margin:10px 0 20px;\">Portofolio berhasil diunggah! Menunggu moderasi admin.</p>'+
-                '<button onclick=\"window.location.href=\\'?tab=foto\\'\" style=\"background:#d4af37;color:#000;border:none;padding:10px 24px;border-radius:4px;font-weight:bold;cursor:pointer;\">OK</button>'+
-            '</div>';
-            document.body.appendChild(d);
-        })();
-        </script>";
+        wp_redirect(add_query_arg('tab', 'foto'));
+        exit;
     } else {
         // Jika user mengunggah file selain format di atas, $movefile['error'] akan berisi pesan penolakan
         $err_msg = addslashes($movefile['error']);
@@ -2987,14 +2925,25 @@ if (isset($_POST['update_profile_personel'])) {
             'draft_data'  => json_encode($draft_fields),
         ]);
 
+        $redirect_url = remove_query_arg(['_wp_http_referer']);
         if ($draft_saved !== false) {
-            $message = '<div class="notice-success">✅ Perubahan profil Anda telah dikirim untuk ditinjau oleh admin. Sementara itu, profil aktif Anda tetap berjalan.</div>';
+            wp_redirect(add_query_arg('saved', '1', $redirect_url));
+            exit;
         } else {
-            $message = '<div class="notice-error">❌ Terjadi kesalahan saat mengirim perubahan ke admin.</div>';
+            wp_redirect(add_query_arg('saved', '0', $redirect_url));
+            exit;
         }
     }
 }
-    $personel = $wpdb->get_row($wpdb->prepare("SELECT * FROM wp9y_personel WHERE id = %d", $personel_id));
+$message = '';
+if (isset($_GET['saved'])) {
+    if ($_GET['saved'] === '1') {
+        $message = '<div class="notice-success">✅ Perubahan profil Anda telah dikirim untuk ditinjau oleh admin. Sementara itu, profil aktif Anda tetap berjalan.</div>';
+    } elseif ($_GET['saved'] === '0') {
+        $message = '<div class="notice-error">❌ Terjadi kesalahan saat mengirim perubahan ke admin.</div>';
+    }
+}
+$personel = $wpdb->get_row($wpdb->prepare("SELECT * FROM wp9y_personel WHERE id = %d", $personel_id));
     
     // Tentukan Tab Aktif
     $current_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'dashboard';
@@ -3096,6 +3045,9 @@ if (isset($_POST['update_profile_personel'])) {
 					}
 					break;
                 case 'artikel':
+    if (isset($_GET['saved']) && $_GET['saved'] === '1') {
+        echo '<div class="notice-success" style="background:#1a1a1a;border:1px solid #d4af37;border-radius:8px;padding:20px;margin-bottom:20px;color:#d4af37;text-align:center;">✅ Artikel berhasil dikirim! Status: Menunggu Approval Admin.</div>';
+    }
     echo '<div class="tab-header" style="margin-bottom:20px;">';
     echo '    <h2 style="color:var(--gold); margin:0;">✍️ Artikel Saya</h2>';
     echo '    <p style="color:#888;">Bagikan pengalaman dan tips Anda ke publik. Setiap artikel akan melalui review admin.</p>';
@@ -7345,29 +7297,7 @@ function lx_handle_artikel_personel() {
                 update_post_meta($post_id, '_personel_author_id', $_SESSION['personel_id']);
             }
 
-            echo "<script>
-(function(){
-    var d=document.createElement('div');
-    d.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:999999;display:flex;align-items:center;justify-content:center;';
-    var m=document.createElement('div');
-    m.style.cssText='background:#1a1a1a;border:1px solid #d4af37;border-radius:8px;padding:30px 40px;max-width:400px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.5);';
-    var e=document.createElement('div');
-    e.style.cssText='font-size:48px;margin-bottom:10px;';
-    e.textContent='✅';
-    m.appendChild(e);
-    var p=document.createElement('p');
-    p.style.cssText='color:#fff;font-size:16px;margin:10px 0 20px;';
-    p.textContent='Artikel berhasil dikirim! Status: Menunggu Approval Admin.';
-    m.appendChild(p);
-    var b=document.createElement('button');
-    b.style.cssText='background:#d4af37;color:#000;border:none;padding:10px 24px;border-radius:4px;font-weight:bold;cursor:pointer;';
-    b.textContent='OK';
-    b.onclick=function(){window.location.href='';};
-    m.appendChild(b);
-    d.appendChild(m);
-    document.body.appendChild(d);
-})();
-</script>";
+            wp_redirect(add_query_arg('tab', 'artikel'));
             exit;
         }
     }
