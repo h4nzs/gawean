@@ -8041,6 +8041,21 @@ function portfolio_kategori_setup_db() {
         PRIMARY KEY (id)
     ) $charset_collate;");
 
+    // Upgrade wp9y_personel schema if needed to match documented column specifications
+    $db_version = get_option('wp9y_personel_db_version', 0);
+    if ($db_version < 2) {
+        $wpdb->query("ALTER TABLE wp9y_personel MODIFY COLUMN posisi VARCHAR(50)");
+        $wpdb->query("ALTER TABLE wp9y_personel MODIFY COLUMN domisili TEXT");
+        $wpdb->query("ALTER TABLE wp9y_personel MODIFY COLUMN foto_profil VARCHAR(500)");
+        $wpdb->query("ALTER TABLE wp9y_personel MODIFY COLUMN cv_url VARCHAR(500)");
+        $wpdb->query("ALTER TABLE wp9y_personel MODIFY COLUMN facebook VARCHAR(500)");
+        $wpdb->query("ALTER TABLE wp9y_personel MODIFY COLUMN instagram VARCHAR(500)");
+        $wpdb->query("ALTER TABLE wp9y_personel MODIFY COLUMN tiktok VARCHAR(500)");
+        $wpdb->query("ALTER TABLE wp9y_personel MODIFY COLUMN thread VARCHAR(500)");
+        $wpdb->query("ALTER TABLE wp9y_personel MODIFY COLUMN youtube VARCHAR(500)");
+        update_option('wp9y_personel_db_version', 2);
+    }
+
     // Populate categories if empty
     $count = $wpdb->get_var("SELECT COUNT(*) FROM $kategori_table");
     if ($count == 0) {
