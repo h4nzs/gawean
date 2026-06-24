@@ -738,8 +738,8 @@ jQuery(document).ready(function($) {
         $prov.select2(opts);
 
         $kota.select2({
-            placeholder: "Pilih maksimal 3 Kota/Kabupaten",
-            maximumSelectionLength: 3,
+            placeholder: "Pilih maksimal 10 Kota/Kabupaten",
+            maximumSelectionLength: 10,
             width: '100%'
         });
 
@@ -4051,8 +4051,8 @@ jQuery(document).ready(function($) {
 
         $prov.select2({ placeholder: "Pilih Provinsi", width: '100%' });
         $kota.select2({
-            placeholder: "Pilih maksimal 3 Kota/Kabupaten",
-            maximumSelectionLength: 3,
+            placeholder: "Pilih maksimal 10 Kota/Kabupaten",
+            maximumSelectionLength: 10,
             width: '100%'
         });
 
@@ -4133,8 +4133,8 @@ jQuery(document).ready(function($) {
     } else {
         $('#edit_domisili_provinsi_2').select2({ placeholder: "Pilih Provinsi", width: '100%' });
         $('#edit_domisili_kota_2').select2({
-            placeholder: "Pilih maksimal 3 Kota/Kabupaten",
-            maximumSelectionLength: 3,
+            placeholder: "Pilih maksimal 10 Kota/Kabupaten",
+            maximumSelectionLength: 10,
             width: '100%'
         });
         $.getJSON(ajaxUrl, { action: 'fetch_wilayah', type: 'provinces' })
